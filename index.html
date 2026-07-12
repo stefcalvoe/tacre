@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.9 — Sistema de Cotizaciones</title>
+<title>TACRE v5.10 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -228,7 +228,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.9</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.10</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -454,7 +454,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     <div id="prelim-body"></div>
     <div class="modal-footer">
       <button class="btn btn-out btn-sm" onclick="closeModal('modal-prelim-cot')">Cerrar</button>
-      <button class="btn btn-t btn-sm" onclick="generarPDF(STATE.jefeAprobId)">📄 Descargar PDF</button>
+      <button class="btn btn-t btn-sm" onclick="generarPDF(STATE.jefeAprobId,false,STATE.prelimPrecio,STATE.prelimMoneda)">📄 Descargar PDF</button>
     </div>
   </div>
 </div>
@@ -517,7 +517,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.9 — EXPEDIENTE COMPLETO
+// TACRE v5.10 — PDF≡PRELIMINAR + EDICIÓN ADMIN
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -540,6 +540,11 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 // v5.9: MEJ-31 expediente completo en el detalle de cualquier etapa: desglose del
 //       jefe (mano de obra, flete, utilidad y margen — solo jefe/admin), servicios
 //       por ítem (instalación/flete), parámetros/condiciones/notas del vendedor
+// v5.10: FIX-32 el PDF de la preliminar usa el precio/moneda EN VIVO del modal del
+//        jefe (antes generaba con datos guardados y no coincidía con la preliminar);
+//        MEJ-33 mensaje WhatsApp/correo con folio y TOTAL oficial (vistaCliente);
+//        MEJ-34 edición administrativa: jefe/admin editan la propuesta en
+//        pendiente_costos/pendiente_jefe conservando estado y vendedor original
 // ═══════════════════════════════════════════════
 
 // ── CRYPTO ──
@@ -954,7 +959,7 @@ function renderDash(){
 // ── FORM ──
 function initFecha(){if(!document.getElementById('f-fecha').value)document.getElementById('f-fecha').value=new Date().toISOString().split('T')[0];}
 function limpiarForm(){
-  STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;STATE.moneda='MXN';STATE.sym='$';
+  STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;STATE.editEstado=null;STATE.moneda='MXN';STATE.sym='$';
   ['f-fecha','f-cliente','f-proyecto','f-atencion','f-solicitante','f-lider','f-notas'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('f-id').value='';document.getElementById('f-iva').value=16;document.getElementById('f-descuento').value=0;
   document.querySelectorAll('.cur-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
@@ -1132,17 +1137,22 @@ function getCotData(estado){
     params:JSON.parse(JSON.stringify(STATE.params)),
     conds:JSON.parse(JSON.stringify(STATE.conds)),
     subtotal:tots.subtotal,total:tots.total,estado,
-    vendedorId:STATE.user.id,vendedorNombre:STATE.user.nombre,
+    // MEJ-34: editar una cotización ajena NO roba la autoría — se conserva el vendedor
+    vendedorId:existing?existing.vendedorId:STATE.user.id,
+    vendedorNombre:existing?(existing.vendedorNombre||STATE.user.nombre):STATE.user.nombre,
     fechaCreacion:existing?.fechaCreacion||new Date().toISOString(),
     historial:existing?.historial||[]
   };
 }
 function guardarBorrador(){
   if(!document.getElementById('f-cliente').value){toast('⚠️ Ingresa el nombre del cliente');return;}
-  const cots=DB.get('cotizaciones')||[];const data=getCotData('borrador');
+  // MEJ-34: en edición administrativa el guardado CONSERVA el estado original
+  const cots=DB.get('cotizaciones')||[];const data=getCotData(STATE.editEstado||'borrador');
+  if(STATE.editEstado)agregarHistorial(data,'Edición administrativa de la propuesta');
   const idx=cots.findIndex(c=>c.id===data.id);
   if(idx>=0)cots[idx]=data;else cots.push(data);
-  DB.set('cotizaciones',cots);STATE.editId=data.id;toast('✓ Borrador guardado: '+data.folio);
+  DB.set('cotizaciones',cots);STATE.editId=data.id;
+  toast(STATE.editEstado?('🛠️ Guardado conservando estado "'+STATE.editEstado.replace('_',' ')+'": '+data.folio):('✓ Borrador guardado: '+data.folio));
 }
 // FIX-16: permite reenviar directamente una cotización rechazada
 function enviarACostos(){
@@ -1161,7 +1171,8 @@ function enviarACostos(){
 function iniciarAutoSave(){clearAutoSave();STATE.autoSaveTimer=setInterval(()=>{if(STATE.items.length>0&&document.getElementById('f-cliente').value)guardarBorradorSilencioso();},60000);}
 function clearAutoSave(){if(STATE.autoSaveTimer){clearInterval(STATE.autoSaveTimer);STATE.autoSaveTimer=null;}}
 function guardarBorradorSilencioso(){
-  const data=getCotData('borrador');const cots=DB.get('cotizaciones')||[];
+  // MEJ-34: el autosave tampoco degrada el estado en edición administrativa
+  const data=getCotData(STATE.editEstado||'borrador');const cots=DB.get('cotizaciones')||[];
   const idx=cots.findIndex(c=>c.id===data.id);
   if(idx>=0)cots[idx]=data;else cots.push(data);
   DB.set('cotizaciones',cots);STATE.editId=data.id;
@@ -1595,8 +1606,11 @@ function saveAndRecalcJefe(cotId,iIdx){
 }
 function verPreliminarCot(id){
   const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
-  // FIX-27: misma fuente de verdad que el PDF; respeta precio/moneda en vivo del modal del jefe
-  const v=vistaCliente(cot,parseFloat(document.getElementById('ja-precio')?.value)||null,document.getElementById('ja-moneda')?.value||null);
+  // FIX-27/32: misma fuente de verdad que el PDF; recuerda los valores en vivo del modal
+  // del jefe para que "Descargar PDF" genere EXACTAMENTE lo que muestra esta preliminar
+  STATE.prelimPrecio=parseFloat(document.getElementById('ja-precio')?.value)||null;
+  STATE.prelimMoneda=document.getElementById('ja-moneda')?.value||null;
+  const v=vistaCliente(cot,STATE.prelimPrecio,STATE.prelimMoneda);
   const rows=(cot.items||[]).map((it,i)=>`
     <tr>
       <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--n2);">${i+1}</td>
@@ -1739,10 +1753,11 @@ function abrirDetalleCot(id){
       <div style="font-weight:700;color:var(--p);">Historial de cambios:</div>
       ${cot.historial?.length?cot.historial.map(h=>`<div>${fmtFecha(h.fecha.slice(0,10))} - ${sanitize(h.usuario)}: ${sanitize(h.cambio)}</div>`).join(''):'Sin historial'}
     </div>
-    ${puedeEditar?`<div class="sep"></div><div class="btn-row">
-      ${(cot.estado==='borrador'||cot.estado==='rechazada')?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">✏️ Editar</button>`:''}
-      ${cot.estado==='pendiente_costos'?`<button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');aprobarCostos('${id}')">✓ Aprobar Estructura</button><button class="btn btn-ng btn-sm" onclick="closeModal('modal-cot');rechazarCostos('${id}')">✗ Rechazar</button>`:''}
-      ${cot.estado==='pendiente_jefe'?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirJefeAprob('${id}')">✏️ Definir Costos</button>`:''}
+    ${(puedeEditar||((hasRole('admin')||hasRole('jefe'))&&['pendiente_costos','pendiente_jefe'].includes(cot.estado)))?`<div class="sep"></div><div class="btn-row">
+      ${(cot.estado==='borrador'||cot.estado==='rechazada')&&puedeEditar?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">✏️ Editar</button>`:''}
+      ${cot.estado==='pendiente_costos'&&(hasRole('costos')||hasRole('admin'))?`<button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');aprobarCostos('${id}')">✓ Aprobar Estructura</button><button class="btn btn-ng btn-sm" onclick="closeModal('modal-cot');rechazarCostos('${id}')">✗ Rechazar</button>`:''}
+      ${cot.estado==='pendiente_jefe'&&(hasRole('jefe')||hasRole('admin'))?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirJefeAprob('${id}')">✏️ Definir Costos</button>`:''}
+      ${['pendiente_costos','pendiente_jefe'].includes(cot.estado)&&(hasRole('admin')||hasRole('jefe'))?`<button class="btn btn-out btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">🛠️ Editar Propuesta</button>`:''}
     </div>`:''}`;
   if(showMats)(cot.items||[]).forEach((_,i)=>renderMatModal(cot.id,i,!canEditMats));
   const footer=document.getElementById('mc-footer');
@@ -1921,7 +1936,14 @@ function copiarCotizacion(id){
 // ── EDITAR COTIZACIÓN ──
 function cargarParaEditar(id){
   const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
-  if(!(cot.estado==='borrador'||cot.estado==='rechazada')||!(cot.vendedorId===STATE.user.id||hasRole('admin'))){toast('No puedes editar esta cotización en este estado.');return;}
+  // MEJ-34: edición administrativa — jefe/admin pueden editar la propuesta también en
+  // pendiente_costos/pendiente_jefe (vendedor ausente, agregar foto del producto,
+  // mejorar condiciones...). Al guardar se CONSERVA el estado y el vendedor original.
+  const propio=cot.vendedorId===STATE.user.id||hasRole('admin');
+  const editaVendedor=(cot.estado==='borrador'||cot.estado==='rechazada')&&propio;
+  const editaAdmin=(hasRole('admin')||hasRole('jefe'))&&['pendiente_costos','pendiente_jefe'].includes(cot.estado);
+  if(!editaVendedor&&!editaAdmin){toast('No puedes editar esta cotización en este estado.');return;}
+  STATE.editEstado=editaAdmin&&!editaVendedor?cot.estado:null;
   STATE.editId=id;STATE.items=JSON.parse(JSON.stringify(cot.items||[]));
   STATE.params=JSON.parse(JSON.stringify(cot.params||[]));STATE.conds=JSON.parse(JSON.stringify(cot.conds||[]));
   STATE.moneda=cot.moneda||'MXN';STATE.sym=cot.sym||'$';
@@ -1931,6 +1953,7 @@ function cargarParaEditar(id){
   document.getElementById('f-notas').value=cot.notas||'';document.getElementById('f-iva').value=cot.iva||16;
   document.getElementById('f-descuento').value=cot.descuento||0;document.getElementById('f-id').value=id;
   renderItems();renderParams();renderConds();activateTab('nueva');iniciarAutoSave();
+  if(STATE.editEstado)toast('🛠️ Edición administrativa: al guardar se conserva el estado "'+STATE.editEstado.replace('_',' ')+'"');
 }
 
 // ── BACKUP ──
@@ -2112,7 +2135,9 @@ function vistaCliente(cot,precioOverride,monedaOverride){
   const ivaMonto=(subtotal-descMonto)*(ivaPct/100);
   return{moneda,sym,rows,subtotal,desc,descMonto,ivaPct,ivaMonto,total:subtotal-descMonto+ivaMonto,usaFinal};
 }
-function generarPDF(id,returnBlob){
+// FIX-32: acepta precio/moneda en vivo (desde la preliminar del jefe) para que el PDF
+// muestre EXACTAMENTE lo mismo que la vista preliminar aunque aún no se haya guardado
+function generarPDF(id,returnBlob,precioOv,monedaOv){
   const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot){toast('Cotización no encontrada');return;}
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','a4');
   const pageW=doc.internal.pageSize.getWidth();const pageH=doc.internal.pageSize.getHeight();const margin=14;
@@ -2137,7 +2162,7 @@ function generarPDF(id,returnBlob){
   y+=4;doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(9);doc.text('ITEMS DE COTIZACION',margin,y);y+=5;
   doc.setDrawColor(0,168,168);doc.line(margin,y,pageW-margin,y);y+=3;
   // FIX-27: precios de VENTA (reparto del precio final) — nunca costos internos
-  const v=vistaCliente(cot);
+  const v=vistaCliente(cot,precioOv||null,monedaOv||null);
   const rows=(cot.items||[]).map((it,i)=>[i+1,it.desc||'',it.cantidad+' '+it.unidad,v.sym+fmtNum(v.rows[i].unit),v.sym+fmtNum(v.rows[i].total)]);
   doc.autoTable({head:[['#','Descripcion','Cantidad','P.Unitario','Total']],body:rows,startY:y,headStyles:{fillColor:[90,45,130],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[55,65,81]},alternateRowStyles:{fillColor:[245,240,252]},columnStyles:{0:{cellWidth:8,halign:'center'},2:{cellWidth:22,halign:'center'},3:{cellWidth:28,halign:'right'},4:{cellWidth:28,halign:'right'}},margin:{left:margin,right:margin},didDrawPage:d=>{y=d.cursor.y;}});
   y=doc.autoTable.previous.finalY+8;
@@ -2187,7 +2212,7 @@ function generarPDF(id,returnBlob){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.9',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.10',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
@@ -2211,18 +2236,24 @@ function buildMsgCot(cot){
     const desc=(it.desc||'').length>120?(it.desc||'').substring(0,120)+'...':it.desc||'';
     return `📌 ÍTEM ${i+1}\n${desc}`;
   }).join('\n');
+  // MEJ-33: folio y total oficial (misma fuente de verdad que el PDF) — el vendedor
+  // siempre comparte el mismo estándar de mensaje, sin improvisar montos
+  const v=vistaCliente(cot);
   return `🌐 https://www.tallercreativo.com.mx\n\n`+
     `Hola, saludos cordiales.\n`+
     `🏢 TACRE - Creatividad & Diseño\n`+
     `✨ COTIZACIÓN PARA PROYECTO ✨\n\n`+
+    `🧾 FOLIO: ${cot.folio||''}\n`+
     `📋 PROYECTO: ${cot.proyecto||''}\n`+
     `👤 CLIENTE: ${cot.cliente||''}\n`+
     `👔 ATENCIÓN: ${atencion}\n`+
+    `📅 FECHA: ${fmtFecha(cot.fecha)}\n`+
     `${sep}\n`+
     `📎 PDF adjunto\n\n`+
     `📄 Resumen del documento:\n`+
     `Hemos preparado una cotización detallada para el proyecto ${cot.proyecto||''} que incluye:\n`+
     `${itemsResumen}\n\n`+
+    `💰 TOTAL: ${v.moneda} ${v.sym}${fmtNum(v.total)} (IVA incluido)\n\n`+
     `✅ Invitamos a revisar los detalles técnicos y comerciales.\n`+
     `✅ Quedamos atentos a su aprobación para proceder con la orden de compra.\n`+
     `${sep}\n`+
