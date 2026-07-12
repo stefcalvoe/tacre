@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.8 — Sistema de Cotizaciones</title>
+<title>TACRE v5.9 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -228,7 +228,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.8</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.9</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -517,7 +517,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.8 — DINERO COHERENTE + DASHBOARD
+// TACRE v5.9 — EXPEDIENTE COMPLETO
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -537,6 +537,9 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 //       MEJ-28 materiales visibles en detalle de cualquier etapa (solo lectura);
 //       MEJ-29 pestaña Dashboard (KPIs, ranking vendedores, ciclo, top clientes);
 //       MEJ-30 44 demos con 4 vendedores y 90 días de historia
+// v5.9: MEJ-31 expediente completo en el detalle de cualquier etapa: desglose del
+//       jefe (mano de obra, flete, utilidad y margen — solo jefe/admin), servicios
+//       por ítem (instalación/flete), parámetros/condiciones/notas del vendedor
 // ═══════════════════════════════════════════════
 
 // ── CRYPTO ──
@@ -1673,6 +1676,38 @@ function abrirDetalleCot(id){
   // MEJ-28: materiales SIEMPRE visibles (solo lectura fuera de revisión de costos) —
   // en producción hay que poder consultar la lista de materiales de una enviada/aceptada
   const showMats=true;
+  // MEJ-31: expediente completo — desglose del jefe (mano de obra, flete, utilidad, margen)
+  // visible en CUALQUIER etapa para jefe/admin, como referencia para proyectos futuros
+  const esJefeAdm=hasRole('jefe')||hasRole('admin');
+  let desgloseJefe='';
+  if(esJefeAdm&&cot.precioFinal){
+    const baseMat=cot.subtotal||0;
+    const adics=(cot.jefeCostos||[]).map(j=>{
+      const monto=j.tipo==='pct'?baseMat*(j.valor||0)/100:(j.valor||0);
+      return{label:j.label||'Costo',det:j.tipo==='pct'?(j.valor||0)+'% de la base':'monto fijo',monto};
+    });
+    const adicTotal=adics.reduce((s,x)=>s+x.monto,0);
+    const costoTotal=baseMat+adicTotal;
+    const uti=cot.precioFinal-costoTotal;
+    const margPct=costoTotal>0?Math.round(uti/costoTotal*100):0;
+    const mFin=cot.monedaFinal||cot.moneda;const syF=symDe(mFin);
+    const fila=(l,v,extra)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.82rem;${extra||''}"><span>${l}</span><span style="font-weight:700;">${v}</span></div>`;
+    desgloseJefe=`<div class="aprob-box" style="margin-bottom:12px;">
+      <h4>💼 Desglose de Costos y Utilidad (referencia interna)</h4>
+      ${fila('Costo base materiales',syF+fmtNum(baseMat))}
+      ${adics.map(a=>fila(a.label+' <span style="color:var(--n5);font-weight:400;">('+a.det+')</span>',syF+fmtNum(a.monto))).join('')}
+      ${fila('Costo total',syF+fmtNum(costoTotal),'border-top:1px solid rgba(90,45,130,.2);margin-top:4px;padding-top:6px;')}
+      ${fila('Precio final (antes de IVA)',mFin+' '+syF+fmtNum(cot.precioFinal))}
+      ${fila('💰 Utilidad',syF+fmtNum(uti)+' <span style="color:var(--td);">('+margPct+'% s/costo)</span>','color:var(--td);background:var(--tl);border-radius:6px;padding:6px 8px;margin-top:4px;')}
+      ${fila('Total con IVA ('+(cot.iva!=null?cot.iva:16)+'%)',syF+fmtNum(cot.precioFinal*(1+(cot.iva!=null?cot.iva:16)/100)))}
+      ${cot.jefeMargs?`<div style="margin-top:8px;font-size:.72rem;color:var(--n5);">Escenarios evaluados: ${cot.jefeMargs.map(m=>'<span class="chip">'+m+'%</span>').join('')}</div>`:''}
+    </div>`;
+  }
+  // MEJ-31: propuesta original del vendedor visible en cualquier etapa
+  const infoVendedor=
+    (cot.params?.length?`<div class="aprob-box" style="margin-bottom:10px;"><h4>⚙️ Parámetros Técnicos</h4>${cot.params.map(p=>`<div style="display:flex;justify-content:space-between;font-size:.8rem;padding:2px 0;"><span style="color:var(--n5);">${sanitize(p.clave)}</span><span style="font-weight:600;">${sanitize(p.valor)}</span></div>`).join('')}</div>`:'')+
+    (cot.conds?.length?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📑 Condiciones de Oferta</h4>${cot.conds.map((cd,i)=>`<div style="font-size:.8rem;padding:2px 0;">${i+1}. ${sanitize(cd.texto)}</div>`).join('')}</div>`:'')+
+    (cot.notas?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📝 Notas del Vendedor</h4><div style="font-size:.82rem;">${sanitize(cot.notas)}</div></div>`:'');
   body.innerHTML=`<div style="font-size:.85rem;margin-bottom:12px;"><div class="g2">
     <div><span style="color:var(--n5);">Cliente: </span><strong>${sanitize(cot.cliente)}</strong></div>
     <div><span style="color:var(--n5);">Proyecto: </span><strong>${sanitize(cot.proyecto)}</strong></div>
@@ -1683,10 +1718,11 @@ function abrirDetalleCot(id){
       <span style="color:var(--n5);font-size:.8rem;"> · Total con IVA (${cot.iva!=null?cot.iva:16}%): ${symDe(cot.monedaFinal||cot.moneda)}${fmtNum((cot.precioFinal||0)*(1+(cot.iva!=null?cot.iva:16)/100))}</span>
       ${cot.notasJefe?`<br><span style="color:var(--n5);">Notas del jefe: ${sanitize(cot.notasJefe)}</span>`:''}
     </div>`:''}
+    ${desgloseJefe}
     ${cot.comentarioCostos?`<div style="background:#fef2f2;border-radius:var(--r-sm);padding:10px;margin-bottom:10px;font-size:.82rem;color:#dc2626;">✗ Rechazada: ${sanitize(cot.comentarioCostos)}</div>`:''}
     <div style="font-size:.82rem;">${(cot.items||[]).map((it,i)=>`<div style="padding:10px 0;border-bottom:1px solid var(--n1);">
       <div style="font-weight:700;">Ítem ${i+1}: ${sanitize(it.desc)}</div>
-      <div style="color:var(--n5);">${it.cantidad} ${it.unidad} · ${cot.sym||'$'}${fmtNum((it.precioUnit||0)*(it.cantidad||1))}</div>
+      <div style="color:var(--n5);">${it.cantidad} ${it.unidad} · costo base ${cot.sym||'$'}${fmtNum((it.precioUnit||0)*(it.cantidad||1))}${it.incluye_inst?' · 🔧 Incluye Instalación':''}${it.incluye_flete?' · 🚚 Incluye Flete':''}</div>
       ${it.imagenes?.filter(Boolean).length?`<div style="display:flex;gap:5px;margin-top:5px;">${it.imagenes.filter(Boolean).map(img=>`<img src="${img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`).join('')}</div>`:''}
       ${showMats?`<div style="margin-top:10px;background:var(--tl);border-radius:8px;padding:10px;border:1px solid rgba(0,168,168,.15);">
         <div style="font-size:.68rem;font-weight:800;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📦 Materiales${canEditMats?'':' <span style="font-weight:400;color:var(--n5);">(solo lectura)</span>'}</div>
@@ -1698,6 +1734,7 @@ function abrirDetalleCot(id){
         </div>
       </div>`:''}
     </div>`).join('')}</div>
+    <div style="margin-top:12px;">${infoVendedor}</div>
     <div style="margin-top:12px;font-size:.78rem;color:var(--n5);background:var(--n1);padding:8px;border-radius:6px;">
       <div style="font-weight:700;color:var(--p);">Historial de cambios:</div>
       ${cot.historial?.length?cot.historial.map(h=>`<div>${fmtFecha(h.fecha.slice(0,10))} - ${sanitize(h.usuario)}: ${sanitize(h.cambio)}</div>`).join(''):'Sin historial'}
@@ -2150,7 +2187,7 @@ function generarPDF(id,returnBlob){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.8',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.9',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
