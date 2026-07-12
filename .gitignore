@@ -1,0 +1,22 @@
+# Respaldos y datos locales
+*.json
+!package.json
+tacre_backup_*.json
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Build futuro (Tauri/PWA)
+node_modules/
+dist/
+src-tauri/target/
+
+# Respaldos comprimidos
+*.zip

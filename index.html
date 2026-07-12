@@ -1,0 +1,1929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>TACRE v5.5 — Sistema de Cotizaciones</title>
+<!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
+<meta name="theme-color" content="#5a2d82">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TACRE">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{--p:#5a2d82;--pd:#3d1d5a;--pm:#7b44a8;--pl:#f5f0fc;--pu:#faf8fd;--t:#00a8a8;--td:#007a7a;--tl:#e8f9f9;--tu:#f0fdfd;--n9:#111827;--n7:#374151;--n5:#6b7280;--n3:#d1d5db;--n1:#f8f9fb;--wh:#ffffff;--sh-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);--sh-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);--sh-lg:0 10px 28px rgba(0,0,0,.1),0 4px 8px rgba(0,0,0,.05);--sh-p:0 4px 16px rgba(90,45,130,.18);--sh-t:0 4px 16px rgba(0,168,168,.18);--r-sm:8px;--r-md:14px;--r-lg:20px;--tr:all .22s cubic-bezier(.4,0,.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,sans-serif;background:#f0f2f7;color:var(--n9);font-size:15px;line-height:1.5;min-height:100vh}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,var(--pd) 0%,var(--p) 50%,#6f3da6 100%);padding:20px}
+.login-card{background:var(--wh);border-radius:var(--r-lg);box-shadow:0 24px 64px rgba(0,0,0,.35);padding:36px 32px;width:100%;max-width:420px;text-align:center}
+.login-logo{width:96px;height:96px;background:var(--pl);border-radius:20px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-p);padding:10px}
+.login-logo img{width:100%;height:100%;object-fit:contain}
+.login-title{font-size:1.9rem;font-weight:900;color:var(--p);text-transform:uppercase;letter-spacing:-1px}.login-title span{color:var(--t)}
+.login-sub{font-size:.72rem;color:var(--n5);margin-top:4px;letter-spacing:2px;text-transform:uppercase}
+.login-form{margin-top:24px;text-align:left}.lgrp{margin-bottom:14px}
+.lgrp label{display:block;font-size:.72rem;font-weight:700;color:var(--n5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.lgrp input{width:100%;padding:11px 14px;border:1.5px solid var(--n3);border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:.92rem;color:var(--n9);transition:var(--tr)}
+.lgrp input:focus{outline:none;border-color:var(--t);box-shadow:0 0 0 3px rgba(0,168,168,.12);background:var(--tu)}
+.btn-login{width:100%;padding:13px;border:none;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--p),#6d3fa0);color:#fff;font-family:'Inter',sans-serif;font-weight:800;font-size:.95rem;cursor:pointer;margin-top:8px;box-shadow:var(--sh-p);transition:var(--tr)}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(90,45,130,.4)}
+.login-err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:8px 12px;border-radius:var(--r-sm);font-size:.82rem;margin-top:10px;display:none;font-weight:600}
+.login-hint{margin-top:16px;font-size:.73rem;color:var(--n5);line-height:1.8}.login-hint strong{color:var(--p)}
+#app-screen{display:none;min-height:100vh}
+.app-nav{background:linear-gradient(135deg,var(--pd) 0%,var(--p) 55%,#6f3da6 100%);display:flex;align-items:stretch;justify-content:space-between;box-shadow:0 2px 16px rgba(61,29,90,.35);position:sticky;top:0;z-index:200;min-height:58px;flex-wrap:wrap}
+.nav-brand{display:flex;align-items:center;gap:10px;padding:8px 14px;color:#fff;flex-shrink:0}
+.nav-logo{width:38px;height:38px;background:rgba(255,255,255,.95);border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);padding:3px}
+.nav-logo img{width:100%;height:100%;object-fit:contain}
+.nav-brand-txt{font-size:1.1rem;font-weight:900;text-transform:uppercase;letter-spacing:-.5px}.nav-brand-txt span{color:#5de8e8}
+.nav-tabs{display:flex;align-items:stretch;gap:2px;padding:8px;flex:1;overflow-x:auto}.nav-tabs::-webkit-scrollbar{height:3px}.nav-tabs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3)}
+.nav-tab{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--r-sm);background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border:none;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700;font-size:.75rem;white-space:nowrap;transition:var(--tr)}
+.nav-tab:hover{background:rgba(255,255,255,.2)}.nav-tab.active{background:rgba(255,255,255,.95);color:var(--p)}
+.nav-user{display:flex;align-items:center;gap:8px;padding:8px 14px;color:rgba(255,255,255,.9);font-size:.78rem;flex-shrink:0}
+.role-badge{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:16px;font-weight:700;font-size:.68rem;text-transform:uppercase}
+.btn-logout{border:1.5px solid rgba(255,255,255,.4);border-radius:16px;padding:5px 12px;background:transparent;color:rgba(255,255,255,.9);font-family:'Inter',sans-serif;font-weight:700;font-size:.73rem;cursor:pointer;transition:var(--tr)}.btn-logout:hover{background:rgba(255,255,255,.15)}
+.tab-panel{display:none;padding:20px 14px 40px;max-width:1160px;margin:0 auto}.tab-panel.active{display:block}
+.s-card{background:var(--wh);border-radius:var(--r-lg);box-shadow:var(--sh-md);padding:22px 20px;margin-bottom:16px;border:1px solid rgba(0,0,0,.04)}
+.s-head{display:flex;align-items:center;gap:10px;font-size:.68rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--p);margin-bottom:16px}
+.s-head::before{content:'';width:4px;height:16px;background:linear-gradient(180deg,var(--t),var(--p));border-radius:2px;flex-shrink:0}
+.s-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--pl),transparent)}
+.panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.panel-title{font-size:1.2rem;font-weight:900;color:var(--p)}.panel-sub{font-size:.8rem;color:var(--n5);margin-top:2px}
+.fg{margin-bottom:12px}.fg label{display:block;font-size:.72rem;font-weight:700;color:var(--n5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.fg input,.fg textarea,.fg select{width:100%;padding:10px 13px;border:1.5px solid var(--n3);border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:.9rem;color:var(--n9);background:var(--wh);transition:var(--tr)}
+.fg input:focus,.fg textarea:focus,.fg select:focus{outline:none;border-color:var(--t);box-shadow:0 0 0 3px rgba(0,168,168,.1);background:var(--tu)}
+.fg textarea{resize:vertical;min-height:70px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+@media(max-width:720px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.btn{border:none;border-radius:24px;padding:9px 18px;font-weight:700;font-size:.82rem;cursor:pointer;transition:var(--tr);font-family:'Inter',sans-serif}
+.btn-p{background:linear-gradient(135deg,var(--p),#6d3fa0);color:#fff;box-shadow:var(--sh-p)}.btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(90,45,130,.4)}
+.btn-t{background:linear-gradient(135deg,var(--t),#00c8c8);color:#fff;box-shadow:var(--sh-t)}.btn-t:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,168,168,.4)}
+.btn-ok{background:#22c55e;color:#fff;box-shadow:0 4px 12px rgba(34,197,94,.3)}.btn-ok:hover{transform:translateY(-2px);background:#16a34a}
+.btn-ng{background:#ef4444;color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3)}.btn-ng:hover{transform:translateY(-2px);background:#dc2626}
+.btn-out{background:transparent;color:var(--p);border:2px solid var(--p)}.btn-out:hover{background:var(--p);color:#fff}
+.btn-sm{padding:5px 12px;font-size:.73rem}
+.btn-del{background:rgba(220,50,50,.1);color:#c0392b;border:1px solid rgba(220,50,50,.2);padding:5px 10px;font-size:.72rem;border-radius:16px;cursor:pointer;font-family:'Inter',sans-serif;transition:var(--tr)}.btn-del:hover{background:#c0392b;color:#fff}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}@media(max-width:720px){.btn-row{flex-direction:column}.btn-row .btn{width:100%;text-align:center}}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.badge-borrador{background:#f3f4f6;color:var(--n5)}.badge-p-costos{background:#fef3c7;color:#92400e}.badge-rechazada{background:#fee2e2;color:#991b1b}
+.badge-p-jefe{background:#dbeafe;color:#1e40af}.badge-aprobada{background:#dcfce7;color:#166534}.badge-enviada{background:#f3e8ff;color:var(--pd)}
+.badge-aceptada{background:#d1fae5;color:#065f46}.badge-negociacion{background:#fef9c3;color:#713f12}
+.cot-list{display:flex;flex-direction:column;gap:10px}
+.cot-card{background:var(--wh);border-radius:var(--r-md);box-shadow:var(--sh-sm);padding:14px 16px;border:1.5px solid rgba(0,0,0,.05);transition:var(--tr)}.cot-card:hover{box-shadow:var(--sh-md);border-color:rgba(90,45,130,.2)}
+.cot-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cot-folio{font-weight:900;color:var(--p);font-size:.9rem}.cot-meta{font-size:.78rem;color:var(--n5);margin-top:3px}.cot-meta span{color:var(--n7);font-weight:600}
+.cot-body{margin-top:12px;padding-top:12px;border-top:1px dashed var(--n3)}
+.item-block{background:var(--n1);border-radius:var(--r-md);padding:16px;margin-bottom:12px;border:1.5px solid var(--n3);position:relative}
+.item-block-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.item-num{font-weight:900;color:var(--p);font-size:.88rem}
+.mat-row{display:grid;grid-template-columns:1fr 80px 90px 30px;gap:8px;align-items:center;margin-bottom:6px}@media(max-width:600px){.mat-row{grid-template-columns:1fr 70px 80px 26px;gap:5px}}
+.mat-search-wrap{position:relative}.mat-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--wh);border:1.5px solid var(--t);border-radius:var(--r-sm);box-shadow:var(--sh-md);max-height:180px;overflow-y:auto;z-index:50;display:none}.mat-dropdown.open{display:block}
+.mat-opt{padding:8px 12px;font-size:.82rem;cursor:pointer;border-bottom:1px solid var(--n1)}.mat-opt:hover{background:var(--tl)}.mat-opt .mat-cod{font-size:.7rem;color:var(--n5)}
+.img-slots{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.img-slot{width:80px;height:80px;border:2px dashed var(--n3);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;flex-shrink:0;transition:var(--tr)}.img-slot:hover{border-color:var(--t);background:var(--tl)}
+.img-slot img{width:100%;height:100%;object-fit:cover}.img-slot .img-del{position:absolute;top:2px;right:2px;background:rgba(220,50,50,.85);color:#fff;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:.65rem;display:none;align-items:center;justify-content:center}.img-slot:hover .img-del{display:flex}
+.img-add-lbl{font-size:.65rem;color:var(--n5);text-align:center;line-height:1.3}
+.margin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}@media(max-width:600px){.margin-grid{grid-template-columns:1fr 1fr}}
+.margin-item{background:var(--wh);padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--n3);cursor:pointer;transition:var(--tr)}.margin-item:hover,.margin-item.selected{border-color:var(--t);background:var(--tl)}.margin-item.selected{box-shadow:0 0 0 2px var(--t)}
+.margin-item label{font-size:.68rem;font-weight:800;color:var(--n5);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:4px}.margin-item .m-val{font-size:1.2rem;font-weight:900;color:var(--p)}.margin-item .m-pct{font-size:.72rem;color:var(--n5);margin-top:2px}
+.margin-result{background:linear-gradient(135deg,var(--td),var(--t),#00c4c4);border-radius:var(--r-md);padding:16px 20px;color:#fff;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.mr-item{text-align:center}.mr-label{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.8}.mr-val{font-size:1.25rem;font-weight:900;margin-top:2px}
+.aprob-box{background:var(--pl);border-radius:var(--r-md);padding:16px;margin-top:12px;border:1.5px solid rgba(90,45,130,.15)}.aprob-box h4{font-size:.78rem;font-weight:800;color:var(--p);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.jc-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;margin-bottom:6px}
+.jc-label{padding:7px 10px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;width:100%}
+.jc-val{padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;width:80px}
+.jc-toggle{padding:5px 12px;border-radius:6px;border:1.5px solid var(--n3);background:var(--wh);font-weight:700;font-size:.8rem;cursor:pointer;color:var(--n5);transition:var(--tr);line-height:1}
+.jc-toggle.active{background:var(--p);color:#fff;border-color:var(--p)}
+.desg-box{background:var(--wh);border-radius:var(--r-md);padding:12px 14px;border:1.5px solid rgba(0,168,168,.2)}
+.desg-row{display:flex;justify-content:space-between;padding:4px 0;font-size:.82rem;color:var(--n7)}
+.desg-row.desg-head{font-weight:800;color:var(--p)}
+.desg-sep{border-top:1.5px solid var(--n3);margin:6px 0}
+.desg-row.desg-sub{font-weight:800;font-size:.88rem;color:var(--n9)}
+.mc-desg{font-size:.68rem;color:var(--n7);margin:5px 0 8px;padding:6px 8px;background:rgba(0,0,0,.03);border-radius:4px}
+.mc-row{display:flex;justify-content:space-between;padding:2px 0}
+.mc-sep{border-top:1px solid var(--n3);margin:3px 0}
+.mc-row.mc-margen{color:var(--td);font-weight:700}
+.ja-tabs{display:flex;border-bottom:2px solid var(--n3);margin-bottom:16px;}
+.ja-tab{padding:9px 16px;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;background:transparent;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700;font-size:.8rem;color:var(--n5);transition:var(--tr);}
+.ja-tab.active{color:var(--p);border-bottom-color:var(--p);}
+.ja-pane{display:none;}.ja-pane.active{display:block;}
+.prelim-wrap{background:var(--pl);border-radius:var(--r-md);padding:20px}
+.fin-box{background:linear-gradient(135deg,#007a7a,#00a8a8,#00c4c4);border-radius:var(--r-lg);padding:20px;color:#fff}.fin-box label{color:rgba(255,255,255,.85)}.fin-box input,.fin-box select{background:rgba(255,255,255,.92);color:var(--n9)}
+.currency-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.cur-btn{padding:5px 12px;border-radius:20px;border:1.5px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.85);font-family:'Inter',sans-serif;font-weight:700;font-size:.75rem;cursor:pointer;transition:var(--tr)}.cur-btn.active{background:rgba(255,255,255,.95);color:var(--td)}
+.resumen-box{background:var(--wh);border-radius:var(--r-md);padding:16px;margin-top:12px;border:1.5px solid rgba(0,168,168,.2)}
+.res-row{display:flex;justify-content:space-between;padding:5px 0;font-size:.88rem;border-bottom:1px solid var(--n1)}.res-row:last-child{border-bottom:none;font-size:1.1rem;font-weight:900;color:var(--p)}.res-row .lbl{color:var(--n5)}
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem}.tbl th{background:var(--p);color:#fff;padding:10px 12px;text-align:left;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px}.tbl td{padding:10px 12px;border-bottom:1px solid var(--n3)}.tbl tr:hover td{background:var(--pl)}.overflow-x{overflow-x:auto}
+.tbl .r-badge{background:var(--pl);color:var(--p);border-radius:12px;padding:2px 7px;font-size:.68rem;font-weight:800;margin:1px;display:inline-block}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}.modal.open{display:flex}
+.modal-box{background:var(--wh);border-radius:var(--r-lg);box-shadow:0 24px 64px rgba(0,0,0,.3);padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:1rem;font-weight:900;color:var(--p);margin-bottom:16px}.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.empty{text-align:center;padding:40px 20px;color:var(--n5)}.empty .ei{font-size:2.8rem;margin-bottom:10px}.empty p{font-size:.88rem}
+#toast{position:fixed;bottom:22px;right:22px;background:var(--n9);color:#fff;padding:12px 20px;border-radius:var(--r-md);font-size:.85rem;font-weight:700;box-shadow:var(--sh-lg);z-index:9999;transition:opacity .35s;opacity:0;pointer-events:none;font-family:'Inter',sans-serif;max-width:300px}
+.cat-search{width:100%;padding:10px 14px;border:1.5px solid var(--n3);border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:.9rem;margin-bottom:10px;transition:var(--tr)}.cat-search:focus{outline:none;border-color:var(--t);box-shadow:0 0 0 3px rgba(0,168,168,.1)}
+.sep{height:1px;background:var(--n3);margin:16px 0}.txt-p{color:var(--p);font-weight:700}.txt-t{color:var(--t);font-weight:700}
+.chip{display:inline-block;background:var(--pl);color:var(--p);padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;margin:2px}
+@media(max-width:480px){.nav-user .nav-name{display:none}}
+
+/* ═══ MEJ-20 (v5.4): Motion & Mobile — transiciones + soporte táctil iPhone/iPad/Android ═══ */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes popIn{from{opacity:0;transform:scale(.94) translateY(16px)}to{opacity:1;transform:none}}
+@keyframes popOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.96) translateY(10px)}}
+@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sheetDown{from{transform:none}to{transform:translateY(100%)}}
+@keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes logoPop{from{opacity:0;transform:scale(.6) rotate(-8deg)}to{opacity:1;transform:none}}
+@keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+/* Login: entrada cinematográfica + gradiente vivo */
+#login-screen{background-size:180% 180%;animation:gradShift 16s ease infinite}
+.login-card{animation:popIn .5s cubic-bezier(.34,1.3,.64,1) both}
+.login-logo{animation:logoPop .6s .12s cubic-bezier(.34,1.5,.64,1) both}
+/* Paneles y tarjetas: entrada suave + escalonada */
+.tab-panel.active{animation:panelIn .35s cubic-bezier(.4,0,.2,1)}
+.ja-pane.active{animation:panelIn .3s cubic-bezier(.4,0,.2,1)}
+.cot-list .cot-card{animation:cardIn .4s cubic-bezier(.4,0,.2,1) both}
+.cot-list .cot-card:nth-child(1){animation-delay:.03s}.cot-list .cot-card:nth-child(2){animation-delay:.07s}
+.cot-list .cot-card:nth-child(3){animation-delay:.11s}.cot-list .cot-card:nth-child(4){animation-delay:.15s}
+.cot-list .cot-card:nth-child(5){animation-delay:.19s}.cot-list .cot-card:nth-child(6){animation-delay:.23s}
+.cot-list .cot-card:nth-child(7){animation-delay:.27s}.cot-list .cot-card:nth-child(8){animation-delay:.31s}
+/* Modales: fade del fondo + pop del contenido; cierre animado vía .closing (ver closeModal) */
+.modal.open{animation:fadeIn .25s ease}
+.modal.open .modal-box{animation:popIn .32s cubic-bezier(.34,1.25,.64,1)}
+.modal.open.closing{animation:fadeOut .2s ease forwards}
+.modal.open.closing .modal-box{animation:popOut .2s ease forwards}
+.mat-dropdown.open{animation:dropIn .18s ease}
+/* Toast: se desliza (clase .show, ver toast()) */
+#toast{transform:translateY(16px) scale(.98);transition:opacity .35s,transform .35s cubic-bezier(.34,1.3,.64,1)}
+#toast.show{opacity:1;transform:none}
+/* Feedback de presión + accesibilidad de foco */
+.btn:active,.btn-login:active,.nav-tab:active,.cur-btn:active,.jc-toggle:active,.btn-del:active,.margin-item:active{transform:scale(.96)}
+.btn:focus-visible,.btn-login:focus-visible,.nav-tab:focus-visible{outline:3px solid rgba(0,168,168,.55);outline-offset:2px}
+@media(hover:hover){.margin-item:hover{transform:translateY(-2px)}.cot-card:hover{transform:translateY(-2px)}}
+/* Táctil: sin 300ms de retraso, sin flash azul, scroll con inercia */
+html{-webkit-text-size-adjust:100%}
+button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.nav-tabs{-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.nav-tab{scroll-snap-align:start}
+.modal-box{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* iOS: alturas reales (barra de Safari) — dvh/svh con fallback */
+@supports(height:100dvh){.modal-box{max-height:90dvh}#login-screen{min-height:100svh}}
+/* Safe areas (notch iPhone / gestos Android) */
+@supports(padding:max(0px)){
+  /* MEJ-24: padding-top para modo PWA standalone (status bar translúcida iOS) */
+  .app-nav{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-top:env(safe-area-inset-top)}
+  #login-screen{padding-top:calc(20px + env(safe-area-inset-top))}
+  .tab-panel{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+  #toast{bottom:calc(22px + env(safe-area-inset-bottom))}
+}
+@media(hover:none),(pointer:coarse){
+  /* FIX-21: el ✕ de imágenes solo aparecía con hover — en táctil era imposible borrar fotos */
+  .img-slot .img-del{display:flex}
+  /* FIX-22: iOS hace zoom al enfocar inputs <16px */
+  .fg input,.fg textarea,.fg select,.lgrp input,.cat-search,.jc-label,.jc-val,.mat-row input,#ja-precio,#ja-moneda{font-size:16px!important}
+  /* Hover pegajoso: sin transform flotante tras tocar */
+  .btn-p:hover,.btn-t:hover,.btn-ok:hover,.btn-ng:hover,.btn-login:hover{transform:none;box-shadow:var(--sh-p)}
+  .img-slot{width:92px;height:92px}
+}
+/* Móvil: modales como bottom-sheet nativo + toast centrado */
+@media(max-width:600px){
+  .modal{padding:0;align-items:flex-end}
+  .modal-box{max-width:100%;border-radius:22px 22px 0 0;padding:20px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+  .modal-box::before{content:'';display:block;width:42px;height:4.5px;background:var(--n3);border-radius:3px;margin:0 auto 14px}
+  .modal.open .modal-box{animation:sheetUp .34s cubic-bezier(.32,.72,.24,1)}
+  .modal.open.closing .modal-box{animation:sheetDown .25s ease forwards}
+  #toast{left:16px;right:16px;max-width:none;text-align:center}
+}
+/* Respeto a usuarios con movimiento reducido */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<script>const LOGO_B64="data:image/png;base64,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";</script>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
+    <div class="login-title">TA<span>CRE</span></div>
+    <div class="login-sub">Sistema de Cotizaciones v5.5</div>
+    <div class="login-form">
+      <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
+      <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-login" onclick="doLogin()">Ingresar →</button>
+      <div class="login-err" id="l-err">Usuario o contraseña incorrectos</div>
+    </div>
+  </div>
+</div>
+
+<div id="app-screen">
+  <nav class="app-nav">
+    <div class="nav-brand">
+      <div class="nav-logo"><img id="logo-nav" alt="TACRE"></div>
+      <span class="nav-brand-txt">TA<span>CRE</span></span>
+    </div>
+    <div class="nav-tabs" id="nav-tabs"></div>
+    <div class="nav-user">
+      <span class="role-badge" id="nav-rol"></span>
+      <span class="nav-name" id="nav-nombre" style="font-size:.8rem;color:rgba(255,255,255,.85)"></span>
+      <button class="btn-logout" onclick="doLogout()">← Salir</button>
+    </div>
+  </nav>
+
+  <div class="tab-panel" id="panel-nueva">
+    <div class="panel-hdr">
+      <div><div class="panel-title">📋 Nueva Cotización</div><div class="panel-sub">Crear o editar cotización</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-out btn-sm" onclick="openCopiarModal()">📑 Copiar de existente</button>
+        <button class="btn btn-t btn-sm" onclick="limpiarForm()">✕ Nueva</button>
+      </div>
+    </div>
+    <div class="s-card">
+      <div class="s-head">📌 Información General</div>
+      <div class="g2">
+        <div class="fg"><label>📅 Fecha</label><input type="date" id="f-fecha"></div>
+        <div class="fg"><label>🏢 Cliente</label><input type="text" id="f-cliente" placeholder="Nombre del cliente"></div>
+        <div class="fg"><label>📁 Proyecto</label><input type="text" id="f-proyecto" placeholder="Código o nombre del proyecto"></div>
+        <div class="fg"><label>👤 Atención / Solicitante</label><input type="text" id="f-atencion" placeholder="Nombre del contacto"></div>
+        <div class="fg"><label>👥 Solicitante / Cuenta</label><input type="text" id="f-solicitante" placeholder="Empresa solicitante"></div>
+        <div class="fg"><label>🎯 Líder de Proyecto</label><input type="text" id="f-lider" placeholder="Nombre del líder"></div>
+      </div>
+    </div>
+    <div class="s-card">
+      <div class="s-head">📦 Ítems de Cotización</div>
+      <div id="items-list"></div>
+      <button class="btn btn-out" style="margin-top:8px" onclick="agregarItem()">+ Agregar Ítem</button>
+    </div>
+    <div class="s-card">
+      <div class="s-head">⚙️ Parámetros Técnicos</div>
+      <div id="params-list"></div>
+      <button class="btn btn-out btn-sm" style="margin-top:8px" onclick="agregarParametro()">+ Agregar Parámetro</button>
+    </div>
+    <div class="s-card">
+      <div class="s-head">📑 Condiciones de Oferta</div>
+      <div id="conds-list"></div>
+      <button class="btn btn-out btn-sm" style="margin-top:8px" onclick="agregarCondicion()">+ Agregar Condición</button>
+    </div>
+    <div class="fin-box s-card" style="margin-bottom:16px;">
+      <div class="s-head" style="color:rgba(255,255,255,.9);">💱 Ajuste Financiero</div>
+      <div style="margin-bottom:8px;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.85);">Moneda</div>
+      <div class="currency-row">
+        <button class="cur-btn active" onclick="setCur('MXN','$',this)">🇲🇽 MXN $</button>
+        <button class="cur-btn" onclick="setCur('USD','US$',this)">🇺🇸 USD</button>
+        <button class="cur-btn" onclick="setCur('EUR','€',this)">🇪🇺 EUR</button>
+        <button class="cur-btn" onclick="setCur('CRC','₡',this)">🇨🇷 CRC</button>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>IVA (%)</label><input type="number" id="f-iva" value="16" min="0" max="100"></div>
+        <div class="fg"><label>Descuento (%)</label><input type="number" id="f-descuento" value="0" min="0" max="100"></div>
+      </div>
+      <div class="fg"><label>Notas / Observaciones</label><textarea id="f-notas" placeholder="Observaciones adicionales..."></textarea></div>
+    </div>
+    <div class="s-card" id="resumen-sec" style="display:none;">
+      <div class="s-head">💰 Resumen de Totales</div>
+      <div class="resumen-box">
+        <div class="res-row"><span class="lbl">Subtotal materiales</span><span id="r-sub">$0.00</span></div>
+        <div class="res-row" id="r-desc-row" style="display:none"><span class="lbl">Descuento</span><span id="r-desc" style="color:#dc2626;">-$0.00</span></div>
+        <div class="res-row"><span class="lbl">IVA</span><span id="r-iva">$0.00</span></div>
+        <div class="res-row"><span class="lbl">Total Final</span><span id="r-total">$0.00</span></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="calcularTotales()">🧮 Calcular Totales</button>
+      <button class="btn btn-t" onclick="guardarBorrador()">💾 Guardar Borrador</button>
+      <button class="btn btn-ok" onclick="enviarACostos()">📤 Enviar a Costos</button>
+    </div>
+    <input type="hidden" id="f-id" value=""><input type="hidden" id="f-moneda" value="MXN"><input type="hidden" id="f-sym" value="$">
+  </div>
+
+  <div class="tab-panel" id="panel-mis">
+    <div class="panel-hdr">
+      <div><div class="panel-title">📋 Mis Cotizaciones</div><div class="panel-sub">Historial y seguimiento</div></div>
+      <button class="btn btn-t btn-sm" onclick="renderMis()">🔄 Actualizar</button>
+    </div>
+    <div style="margin-bottom:12px;"><input class="cat-search" id="mis-search" placeholder="🔍 Buscar por folio, cliente, proyecto o vendedor..." oninput="renderMis()"></div>
+    <div id="mis-list" class="cot-list"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-costos">
+    <div class="panel-hdr">
+      <div><div class="panel-title">🔍 Revisión de Costos</div><div class="panel-sub">Aprobar o rechazar estructuras de materiales</div></div>
+      <button class="btn btn-t btn-sm" onclick="renderCostos()">🔄 Actualizar</button>
+    </div>
+    <div id="costos-list" class="cot-list"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-jefe">
+    <div class="panel-hdr">
+      <div><div class="panel-title">✅ Aprobación Final</div><div class="panel-sub">Definir costos, márgenes y precio final</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-out btn-sm" onclick="openImportExcel()">📥 Importar Catálogo Excel</button>
+        <button class="btn btn-t btn-sm" onclick="renderJefe()">🔄 Actualizar</button>
+      </div>
+    </div>
+    <div id="jefe-list" class="cot-list"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-auditoria">
+    <div class="panel-hdr">
+      <div><div class="panel-title">📊 Auditoría</div><div class="panel-sub">Historial completo del sistema</div></div>
+      <button class="btn btn-t btn-sm" onclick="renderAuditoria()">🔄 Actualizar</button>
+    </div>
+    <div style="margin-bottom:12px;"><input class="cat-search" id="aud-search" placeholder="🔍 Filtrar por folio, cliente, estado..." oninput="renderAuditoria()"></div>
+    <div class="s-card overflow-x">
+      <table class="tbl"><thead><tr><th>Folio</th><th>Cliente</th><th>Proyecto</th><th>Vendedor</th><th>Estado</th><th>Fecha</th><th>Total</th></tr></thead><tbody id="aud-body"></tbody></table>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-users">
+    <div class="panel-hdr">
+      <div><div class="panel-title">👥 Gestión de Usuarios</div><div class="panel-sub">Administrar cuentas y roles</div></div>
+      <button class="btn btn-p btn-sm" onclick="openUserModal()">+ Nuevo Usuario</button>
+    </div>
+    <div class="s-card overflow-x">
+      <table class="tbl"><thead><tr><th>Nombre</th><th>Usuario</th><th>Roles</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="users-body"></tbody></table>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-catalogo">
+    <div class="panel-hdr">
+      <div><div class="panel-title">🏷️ Catálogo de Materiales</div><div class="panel-sub">Materiales disponibles para cotizaciones</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-out btn-sm" onclick="openImportExcel()">📥 Importar Excel</button>
+        <button class="btn btn-p btn-sm" onclick="openMatModal()">+ Agregar Material</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;"><input class="cat-search" id="cat-search" placeholder="🔍 Buscar material por código, nombre o categoría..." oninput="renderCatalogo()"></div>
+    <div class="s-card overflow-x">
+      <table class="tbl"><thead><tr><th>Código</th><th>Descripción</th><th>Categoría</th><th>Costo Unit.</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody id="cat-body"></tbody></table>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-backup">
+    <div class="panel-hdr"><div><div class="panel-title">💾 Respaldo y Restauración</div><div class="panel-sub">Exportar o importar toda la base de datos</div></div></div>
+    <div class="s-card">
+      <p style="margin-bottom:12px;color:var(--n5)">Puedes descargar un archivo con todos los datos (usuarios, cotizaciones, materiales, configuración) o restaurar desde una copia anterior.</p>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="descargarBackup()">📥 Descargar Backup (JSON)</button>
+        <button class="btn btn-out" onclick="document.getElementById('restore-file').click()">📤 Restaurar Backup</button>
+        <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restaurarBackup(this)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALES -->
+<div class="modal" id="modal-cot">
+  <div class="modal-box" style="max-width:700px;">
+    <div class="modal-title" id="mc-title">Detalle Cotización</div>
+    <div id="mc-body"></div>
+    <div class="modal-footer" id="mc-footer"></div>
+  </div>
+</div>
+<div class="modal" id="modal-copiar">
+  <div class="modal-box">
+    <div class="modal-title">📑 Buscar Cotización para Copiar</div>
+    <div class="fg"><label>Número de Folio</label><input type="text" id="cp-folio" placeholder="Ej: COT-0001" oninput="buscarParaCopiar()"></div>
+    <div id="cp-resultado"></div>
+    <div class="modal-footer"><button class="btn btn-out btn-sm" onclick="closeModal('modal-copiar')">Cancelar</button></div>
+  </div>
+</div>
+<div class="modal" id="modal-rechazo">
+  <div class="modal-box">
+    <div class="modal-title">✗ Rechazar Cotización</div>
+    <div class="fg"><label>Motivo del rechazo</label><textarea id="rechazo-motivo" placeholder="Describe las correcciones necesarias..." style="min-height:100px;"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-rechazo')">Cancelar</button>
+      <button class="btn btn-ng" onclick="confirmarRechazo()">Rechazar</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-jefe-aprob">
+  <div class="modal-box" style="max-width:960px;">
+    <div class="modal-title">✅ Definir Costos y Aprobar</div>
+    <div id="ja-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-jefe-aprob')">Cancelar</button>
+      <button class="btn btn-ok" onclick="confirmarJefeAprob()">Aprobar y Guardar</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-prelim-cot">
+  <div class="modal-box" style="max-width:700px;">
+    <div class="modal-title">👁️ Vista Preliminar — Como la verá el cliente</div>
+    <div id="prelim-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-prelim-cot')">Cerrar</button>
+      <button class="btn btn-t btn-sm" onclick="generarPDF(STATE.jefeAprobId)">📄 Descargar PDF</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-enviar">
+  <div class="modal-box" style="max-width:650px;">
+    <div class="modal-title" id="env-title">📤 Enviar Cotización al Cliente</div>
+    <div id="env-body"></div>
+    <div class="modal-footer" id="env-footer"></div>
+  </div>
+</div>
+<div class="modal" id="modal-user">
+  <div class="modal-box">
+    <div class="modal-title" id="mu-title">Nuevo Usuario</div>
+    <input type="hidden" id="mu-id">
+    <div class="fg"><label>Nombre completo</label><input type="text" id="mu-nombre" placeholder="Nombre y apellido"></div>
+    <div class="fg"><label>Usuario</label><input type="text" id="mu-user" placeholder="Login del usuario"></div>
+    <div class="fg"><label>Contraseña</label><input type="password" id="mu-pass" placeholder="Contraseña"></div>
+    <div class="fg"><label>Roles (seleccionar)</label><div id="mu-roles" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-user')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-excel">
+  <div class="modal-box">
+    <div class="modal-title">📥 Importar Catálogo de Materiales</div>
+    <p style="font-size:.85rem;color:var(--n5);margin-bottom:12px;">
+      El archivo Excel debe tener columnas: <strong>Código, Descripción, Costo Unitario, Proveedor, Categoría, Stock</strong>.<br>
+      <span style="color:#dc2626;font-weight:700;">⚠️ Esto reemplazará todo el catálogo actual.</span>
+    </p>
+    <div class="fg"><label>Archivo Excel (.xlsx)</label><input type="file" id="excel-file" accept=".xlsx,.xls" style="padding:8px;"></div>
+    <div id="excel-preview" style="display:none;margin-top:10px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-excel')">Cancelar</button>
+      <button class="btn btn-ok" id="btn-import-confirm" onclick="confirmarImportExcel()" style="display:none;">✓ Importar</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal-mat">
+  <div class="modal-box">
+    <div class="modal-title" id="mm-title">Agregar Material</div>
+    <input type="hidden" id="mm-idx">
+    <div class="g2">
+      <div class="fg"><label>Código</label><input type="text" id="mm-cod" placeholder="MAT0001"></div>
+      <div class="fg"><label>Categoría</label><input type="text" id="mm-cat" placeholder="Madera, Herrajes..."></div>
+    </div>
+    <div class="fg"><label>Descripción</label><input type="text" id="mm-desc" placeholder="Nombre del material"></div>
+    <div class="g2">
+      <div class="fg"><label>Costo Unitario</label><input type="number" id="mm-costo" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Proveedor</label><input type="text" id="mm-prov" placeholder="Nombre del proveedor"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-out btn-sm" onclick="closeModal('modal-mat')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarMaterial()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// TACRE v5.5 — PWA INSTALABLE
+// v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
+// v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
+//       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
+//       FIX-20 fallback de portapapeles en file://
+// v5.4: FIX-11 precioUnit sincronizado al abrir Aprobación Final
+//       MEJ-20 transiciones (modales, tabs, cards, toast, login, bottom-sheet móvil)
+//       FIX-21 ✕ de imágenes visible en táctil · FIX-22 sin zoom iOS en inputs
+//       MEJ-23 teclado decimal móvil · safe-areas iPhone · dvh/svh Safari
+// v5.5: MEJ-24 PWA instalable (manifest + sw.js + iconos + standalone iOS/Android,
+//       offline tras 1ª carga; requiere http/https — en file:// funciona igual que antes)
+// ═══════════════════════════════════════════════
+
+// ── CRYPTO ──
+async function sha256(msg){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function hashPassword(p){return sha256(p+'TACRE_SAL_GLOBAL_v5.2');}
+function generateUUID(){if(crypto.randomUUID)return crypto.randomUUID();return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});}
+
+// MEJORA-01: sanitize para prevenir XSS al insertar datos de usuario en innerHTML
+function sanitize(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// FIX-20: copia robusta al portapapeles (funciona en file:// y https://)
+async function copyText(txt){
+  try{await navigator.clipboard.writeText(txt);return true;}catch(e){}
+  try{
+    const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0;left:-9999px;';
+    document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');document.body.removeChild(ta);return ok;
+  }catch(e){return false;}
+}
+
+// ── DB ──
+const DB={
+  get:k=>{try{return JSON.parse(localStorage.getItem('tacre_'+k)||'null');}catch(e){return null;}},
+  set:(k,v)=>localStorage.setItem('tacre_'+k,JSON.stringify(v)),
+  async init(){
+    if(!DB.get('config'))DB.set('config',{empresa:'TACRE - Creatividad & Diseño',direccion:'Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',web:'tallercreativo.com.mx',nextFolio:1});
+    if(!DB.get('materiales'))DB.set('materiales',CATALOGO_INICIAL);
+    if(!DB.get('cotizaciones'))DB.set('cotizaciones',[]);
+    if(!DB.get('usuarios')){
+      const demo=[
+        {id:1,nombre:'Administrador TACRE',user:'admin',hash:'',roles:['admin','jefe','vendedor','costos'],activo:true},
+        {id:2,nombre:'Ana Vendedora',user:'ana',hash:'',roles:['vendedor'],activo:true},
+        {id:3,nombre:'Carlos Costos',user:'carlos',hash:'',roles:['costos'],activo:true},
+        {id:4,nombre:'Juan Jefe',user:'jefe',hash:'',roles:['jefe'],activo:true},
+      ];
+      for(const u of demo)u.hash=await hashPassword(u.user+'123');
+      DB.set('usuarios',demo);
+    } else {
+      const us=DB.get('usuarios');let upd=false;
+      for(const u of us){if(!u.hash){u.hash=await hashPassword(u.user+'123');upd=true;}}
+      if(upd)DB.set('usuarios',us);
+    }
+  }
+};
+
+const CATALOGO_INICIAL=[
+  {codigo:'MAT0001',descripcion:'MDF NATURAL 18 MM',costoUnitario:425,proveedor:'AGLOMERADOS Y TRIPLAY VIC',categoria:'Madera',stock:0},
+  {codigo:'MAT0002',descripcion:'MDF NATURAL 12 MM',costoUnitario:295,proveedor:'AGLOMERADOS Y TRIPLAY VIC',categoria:'Madera',stock:0},
+  {codigo:'MAT0003',descripcion:'LAMINADO PLASTICO NEGRO MATE',costoUnitario:330,proveedor:'AGLOMERADOS Y TRIPLAY VIC',categoria:'Laminado',stock:0},
+  {codigo:'MAT0004',descripcion:'LAMINADO RALPH WILSON 1925-07 MARMOL BLANCO',costoUnitario:1239,proveedor:'DECORLAM',categoria:'Laminado',stock:0},
+  {codigo:'MAT0005',descripcion:'LTOS. LOKWELD',costoUnitario:135,proveedor:'DECORLAM',categoria:'Pegantes',stock:0},
+  {codigo:'MAT0006',descripcion:'LTO. RESISTOL 850',costoUnitario:85,proveedor:'EL GRAN TLAPALERO',categoria:'Pegantes',stock:0},
+  {codigo:'MAT0007',descripcion:'PIJAS 8 * 1 1/2"',costoUnitario:0.35,proveedor:'EL GRAN TLAPALERO',categoria:'Herrajes',stock:0},
+  {codigo:'MAT0008',descripcion:'PIJAS 6 * 5/8" CROMADA',costoUnitario:0.5,proveedor:'EL GRAN TLAPALERO',categoria:'Herrajes',stock:0},
+  {codigo:'MAT0009',descripcion:'T. CLAVILLO 40 MM',costoUnitario:165,proveedor:'ACEGRAPAS',categoria:'Herrajes',stock:0},
+  {codigo:'MAT0010',descripcion:'JGOS. CORREDERA 55 CMS CIERRE SUAVE',costoUnitario:60,proveedor:'EL GRAN TLAPALERO',categoria:'Herrajes',stock:0},
+  {codigo:'MAT0011',descripcion:'LTOS. THINNER',costoUnitario:35,proveedor:'SAYER AZCAPOTZALCO',categoria:'Químicos',stock:0},
+  {codigo:'MAT0012',descripcion:'KG. ESTOPA',costoUnitario:75,proveedor:'SAYER AZCAPOTZALCO',categoria:'Químicos',stock:0},
+  {codigo:'MAT0013',descripcion:'BROCA DE BALERO DE 1/4"',costoUnitario:220,proveedor:'Sin Proveedor',categoria:'Herramientas',stock:0},
+  {codigo:'MAT0014',descripcion:'LIJA ORBITAL 180',costoUnitario:10.5,proveedor:'REPRESENTACIONES ROBLES',categoria:'Herramientas',stock:0},
+  {codigo:'MAT0015',descripcion:'LIJAS DE AGUA 180',costoUnitario:15.5,proveedor:'EL GRAN TLAPALERO',categoria:'Herramientas',stock:0},
+  {codigo:'MAT0016',descripcion:'CNC',costoUnitario:10,proveedor:'TACRE',categoria:'Servicios',stock:0},
+  {codigo:'MAT0017',descripcion:'ACRILICO Z2 3MM',costoUnitario:1185,proveedor:'PLASTITEC',categoria:'Materiales',stock:0},
+  {codigo:'MAT0018',descripcion:'ROLLOS DE LED 2835 BLANCO',costoUnitario:350,proveedor:'ELECTRICA GALMOS',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0019',descripcion:'ROLLOS DE NEON FLEX BLANCO',costoUnitario:180,proveedor:'ELECTRICA GALMOS',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0020',descripcion:'MULTICONTACTOS DE 3 ENTRADAS',costoUnitario:30,proveedor:'SANTUL',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0021',descripcion:'MULTICONTACTOS DE 6 ENTRADAS',costoUnitario:45,proveedor:'SANTUL',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0022',descripcion:'MTS. CABLE DE USO RUDO',costoUnitario:37,proveedor:'ELEKTRON',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0023',descripcion:'MTS. CABLE DUPLEX',costoUnitario:17,proveedor:'ELEKTRON',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0024',descripcion:'CLAVIJA ANGULAR',costoUnitario:46,proveedor:'ELECTRICO MEXICANO',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0025',descripcion:'CINTAS DE AISLAR',costoUnitario:35,proveedor:'ELECTRICO MEXICANO',categoria:'Accesorios',stock:0},
+  {codigo:'MAT0026',descripcion:'BALANCIN',costoUnitario:14,proveedor:'AG ELECTRONICA',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0027',descripcion:'FUENTES DE 12 V',costoUnitario:586.8,proveedor:'AG ELECTRONICA',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0028',descripcion:'TERMINAL ZAPATA ESPADA',costoUnitario:2.5,proveedor:'ELECTRICA GALMOS',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0029',descripcion:'TERMINAL ZAPATA FASTON',costoUnitario:2.5,proveedor:'ELECTRICA GALMOS',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0030',descripcion:'ABRAZADERAS 1/4"',costoUnitario:4,proveedor:'ELECTRICO MEXICANO',categoria:'Accesorios',stock:0},
+  {codigo:'MAT0031',descripcion:'KOLA LOKA INDUSTRIAL',costoUnitario:62,proveedor:'KOLA LOKA',categoria:'Pegantes',stock:0},
+  {codigo:'MAT0032',descripcion:'MTS. CABLE DE TELEFONO',costoUnitario:18,proveedor:'ELECTRICO MEXICANO',categoria:'Eléctrica',stock:0},
+  {codigo:'MAT0033',descripcion:'ROLLO DE CINTA DOBLE CARA ESPUMADA',costoUnitario:115,proveedor:'SOLTEC',categoria:'Accesorios',stock:0},
+  {codigo:'MAT0034',descripcion:'TUBO DE SILICON NEGRO Y BLANCO',costoUnitario:90,proveedor:'SAYERA AZCAPOTZALCO',categoria:'Otros',stock:0},
+  {codigo:'MAT0035',descripcion:'JGO. DE GRAFICOS EN VINIL AUTOADHERIBLE',costoUnitario:51,proveedor:'PUNK PRINT',categoria:'Otros',stock:0},
+  {codigo:'MAT0036',descripcion:'EMPAQUE',costoUnitario:385,proveedor:'RIJE EMPAQUE',categoria:'Otros',stock:0},
+];
+
+// ── ESTADO GLOBAL ──
+let STATE={user:null,items:[],params:[],conds:[],moneda:'MXN',sym:'$',editId:null,rechazoCotId:null,
+  jefeAprobId:null, // BUG-12: separado de rechazoCotId
+  jefeCostos:[], // costos adicionales dinámicos del modal jefe-aprob
+  autoSaveTimer:null};
+
+const TABS_CONFIG=[
+  {id:'nueva',   label:'📋 Nueva Cotización',roles:['vendedor','admin']},
+  {id:'mis',     label:'📄 Mis Cotizaciones', roles:['vendedor','admin']},
+  {id:'costos',  label:'🔍 Revisión Costos',  roles:['costos','admin']},
+  {id:'jefe',    label:'✅ Aprobación Final',  roles:['jefe','admin']},
+  {id:'catalogo',label:'🏷️ Catálogo',          roles:['jefe','admin']},
+  {id:'auditoria',label:'📊 Auditoría',        roles:['jefe','admin','costos']},
+  {id:'users',   label:'👥 Usuarios',          roles:['admin']},
+  {id:'backup',  label:'💾 Respaldo BD',       roles:['admin']},
+];
+
+// ── AUTH ──
+async function doLogin(){
+  const user=document.getElementById('l-user').value.trim();
+  // BUG-09 FIX: contraseña sin .trim() — espacios son parte de la clave
+  const pass=document.getElementById('l-pass').value;
+  const usuarios=DB.get('usuarios');
+  const u=usuarios.find(x=>x.user===user&&x.activo);
+  if(!u){document.getElementById('l-err').style.display='block';return;}
+  const hashIngresado=await hashPassword(pass);
+  if(u.hash!==hashIngresado){
+    if(!u.hash){u.hash=hashIngresado;DB.set('usuarios',usuarios);}
+    else{document.getElementById('l-err').style.display='block';return;}
+  }
+  STATE.user=u;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  document.getElementById('nav-rol').textContent=u.roles.join('+');
+  document.getElementById('nav-nombre').textContent=u.nombre.split(' ')[0];
+  buildTabs();activateTab(getFirstTab());
+}
+function doLogout(){
+  STATE.user=null;STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;clearAutoSave();
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('l-pass').value='';
+  document.getElementById('l-err').style.display='none';
+}
+function hasRole(r){return STATE.user&&STATE.user.roles.includes(r);}
+function canAccess(roles){return roles.some(r=>STATE.user.roles.includes(r));}
+function buildTabs(){
+  const nav=document.getElementById('nav-tabs');nav.innerHTML='';
+  TABS_CONFIG.filter(t=>canAccess(t.roles)).forEach(t=>{
+    const b=document.createElement('button');b.className='nav-tab';b.dataset.tab=t.id;b.textContent=t.label;
+    b.onclick=()=>activateTab(t.id);nav.appendChild(b);
+  });
+}
+function getFirstTab(){return TABS_CONFIG.find(t=>canAccess(t.roles))?.id||'mis';}
+function activateTab(id){
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+  if(id==='mis')renderMis();
+  if(id==='costos')renderCostos();
+  if(id==='jefe')renderJefe();
+  if(id==='auditoria')renderAuditoria();
+  if(id==='users')renderUsers();
+  if(id==='catalogo')renderCatalogo();
+  if(id==='nueva'){if(!STATE.editId)limpiarForm();initFecha();}
+}
+
+// ── FORM ──
+function initFecha(){if(!document.getElementById('f-fecha').value)document.getElementById('f-fecha').value=new Date().toISOString().split('T')[0];}
+function limpiarForm(){
+  STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;STATE.moneda='MXN';STATE.sym='$';
+  ['f-fecha','f-cliente','f-proyecto','f-atencion','f-solicitante','f-lider','f-notas'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-id').value='';document.getElementById('f-iva').value=16;document.getElementById('f-descuento').value=0;
+  document.querySelectorAll('.cur-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('f-moneda').value='MXN';document.getElementById('f-sym').value='$';
+  document.getElementById('resumen-sec').style.display='none';
+  initFecha();renderItems();renderParams();renderConds();agregarItem();clearAutoSave();
+  // MEJORA-03: arrancar autoguardado al primer cambio en formulario nuevo
+  document.getElementById('f-cliente').addEventListener('input',iniciarAutoSave,{once:true});
+}
+function setCur(m,s,el){STATE.moneda=m;STATE.sym=s;document.getElementById('f-moneda').value=m;document.getElementById('f-sym').value=s;document.querySelectorAll('.cur-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+
+// MEJORA-02: genFolio verifica duplicados para evitar folios repetidos tras restaurar backup
+function genFolio(){
+  const config=DB.get('config')||{};const cots=DB.get('cotizaciones')||[];
+  if(!config.nextFolio)config.nextFolio=cots.length+1;
+  let folio;
+  do{folio='COT-'+String(config.nextFolio).padStart(4,'0');config.nextFolio++;}
+  while(cots.some(c=>c.folio===folio));
+  DB.set('config',config);return folio;
+}
+
+// FIX-16: rechazada puede reenviarse a costos directamente (antes quedaba atascada)
+// FIX-17: negociación tiene salidas reales: aceptada / rechazada / enviada
+function transicionValida(estadoActual,nuevoEstado){
+  const p={'borrador':['pendiente_costos'],'pendiente_costos':['pendiente_jefe','rechazada'],'rechazada':['borrador','pendiente_costos'],
+    'pendiente_jefe':['aprobada'],'aprobada':['enviada'],'enviada':['aceptada','rechazada','negociacion'],
+    'aceptada':[],'negociacion':['aceptada','rechazada','enviada']};
+  return (estadoActual in p)&&p[estadoActual].includes(nuevoEstado);
+}
+function agregarHistorial(cot,cambio){if(!cot.historial)cot.historial=[];cot.historial.push({fecha:new Date().toISOString(),usuario:STATE.user.nombre,cambio});}
+
+// ── ÍTEMS ──
+function agregarItem(){STATE.items.push({id:generateUUID(),desc:'',unidad:'pza',cantidad:1,precioUnit:0,materiales:[],incluye_inst:false,incluye_flete:false,imagenes:[null,null,null]});renderItems();}
+function renderItems(){
+  const c=document.getElementById('items-list');c.innerHTML='';
+  STATE.items.forEach((it,idx)=>{
+    const d=document.createElement('div');d.className='item-block';
+    d.innerHTML=`<div class="item-block-hdr"><span class="item-num">Ítem ${idx+1}</span><button class="btn-del" onclick="eliminarItem(${idx})">✕ Eliminar</button></div>
+      <div class="fg"><label>Descripción del Ítem</label><textarea rows="2" placeholder="Descripción completa del ítem..." onchange="STATE.items[${idx}].desc=this.value">${sanitize(it.desc||'')}</textarea></div>
+      <div class="g3">
+        <div class="fg"><label>Unidad</label><select onchange="STATE.items[${idx}].unidad=this.value">${['pza','m','m²','m³','kg','lt','hr','jgo','rollo','mt'].map(u=>`<option ${it.unidad===u?'selected':''}>${u}</option>`).join('')}</select></div>
+        <div class="fg"><label>Cantidad</label><input type="number" min="0" step="0.01" value="${it.cantidad||1}" onchange="STATE.items[${idx}].cantidad=parseFloat(this.value)||1"></div>
+        <div class="fg"><label>Precio Unit. (manual)</label><input type="number" min="0" step="0.01" value="${it.precioUnit||''}" placeholder="0.00" onchange="STATE.items[${idx}].precioUnit=parseFloat(this.value)||0"></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;"><input type="checkbox" ${it.incluye_inst?'checked':''} onchange="STATE.items[${idx}].incluye_inst=this.checked"> Incluye Instalación</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;"><input type="checkbox" ${it.incluye_flete?'checked':''} onchange="STATE.items[${idx}].incluye_flete=this.checked"> Incluye Flete</label>
+      </div>
+      <div class="s-head" style="margin-top:10px;font-size:.62rem;">🧩 Materiales del Ítem</div>
+      <div id="mats-${idx}"></div>
+      <button class="btn btn-out btn-sm" style="margin-top:6px" onclick="agregarMaterial(${idx})">+ Material</button>
+      <div class="s-head" style="margin-top:14px;font-size:.62rem;">🖼️ Imágenes del Ítem (máx. 3)</div>
+      <div class="img-slots" id="imgs-${idx}"></div>`;
+    c.appendChild(d);renderMateriales(idx);renderImagenes(idx);
+  });
+}
+function eliminarItem(idx){STATE.items.splice(idx,1);renderItems();}
+
+// ── MATERIALES ──
+function agregarMaterial(idx){STATE.items[idx].materiales.push({matIdx:null,nombre:'',cantidad:1,costoUnit:0});renderMateriales(idx);}
+function renderMateriales(idx){
+  const c=document.getElementById('mats-'+idx);if(!c)return;c.innerHTML='';
+  STATE.items[idx].materiales.forEach((m,mi)=>{
+    const row=document.createElement('div');row.className='mat-row';
+    row.innerHTML=`<div class="mat-search-wrap">
+      <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;" placeholder="Buscar material..." value="${sanitize(m.nombre||'')}"
+        oninput="buscarMaterial(this,'mdrop-${idx}-${mi}',${idx},${mi})"
+        onfocus="document.getElementById('mdrop-${idx}-${mi}').classList.add('open')"
+        onblur="setTimeout(()=>document.getElementById('mdrop-${idx}-${mi}').classList.remove('open'),200)">
+      <div class="mat-dropdown" id="mdrop-${idx}-${mi}"></div></div>
+      <input type="number" min="0" step="0.01" value="${m.cantidad||1}" placeholder="Cant." style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;"
+        onchange="STATE.items[${idx}].materiales[${mi}].cantidad=parseFloat(this.value)||1;recalcMat(${idx})">
+      <input type="number" readonly value="${m.costoUnit||0}" style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);" placeholder="C.Unit">
+      <button class="btn-del" style="padding:4px 6px;" onclick="eliminarMaterial(${idx},${mi})">✕</button>`;
+    c.appendChild(row);
+  });
+}
+function buscarMaterial(inp,dropId,idx,mi){
+  const q=inp.value.toLowerCase();STATE.items[idx].materiales[mi].nombre=inp.value;
+  const drop=document.getElementById(dropId);if(!drop)return;
+  const mats=DB.get('materiales')||[];
+  const matches=q.length>1?mats.filter(m=>m.descripcion.toLowerCase().includes(q)||m.codigo.toLowerCase().includes(q)||(m.categoria||'').toLowerCase().includes(q)):mats.slice(0,12);
+  drop.innerHTML='';
+  const newOpt=document.createElement('div');newOpt.className='mat-opt';newOpt.style.cssText='background:var(--pl);color:var(--p);font-weight:700;';
+  newOpt.innerHTML=`<div>+ Crear nuevo material "${sanitize(inp.value)}"</div>`;
+  newOpt.onmousedown=()=>{openMatModalFromItem(inp.value,idx,mi);drop.classList.remove('open');};
+  drop.appendChild(newOpt);
+  matches.forEach(m=>{
+    const opt=document.createElement('div');opt.className='mat-opt';
+    opt.innerHTML=`<div>${sanitize(m.descripcion)}</div><div class="mat-cod">${sanitize(m.codigo)} · ${sanitize(m.categoria)} · $${m.costoUnitario}</div>`;
+    opt.onmousedown=()=>{inp.value=m.descripcion;STATE.items[idx].materiales[mi].nombre=m.descripcion;STATE.items[idx].materiales[mi].costoUnit=m.costoUnitario;STATE.items[idx].materiales[mi].matCod=m.codigo;recalcMat(idx);renderMateriales(idx);};
+    drop.appendChild(opt);
+  });
+  drop.classList.add('open');
+}
+function eliminarMaterial(idx,mi){STATE.items[idx].materiales.splice(mi,1);renderMateriales(idx);}
+function recalcMat(idx){
+  const it=STATE.items[idx];
+  const costMat=it.materiales.reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);
+  if(costMat>0)it.precioUnit=costMat;
+}
+
+// ── IMÁGENES ──
+function renderImagenes(idx){
+  const c=document.getElementById('imgs-'+idx);if(!c)return;c.innerHTML='';
+  for(let i=0;i<3;i++){
+    const slot=document.createElement('div');slot.className='img-slot';
+    const img=STATE.items[idx].imagenes[i];
+    if(img){slot.innerHTML=`<img src="${img}"><button class="img-del" onclick="eliminarImagen(${idx},${i})">✕</button>`;}
+    else{slot.innerHTML=`<div class="img-add-lbl">📷<br>Foto ${i+1}</div>`;slot.onclick=()=>{const fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.onchange=e=>cargarImagen(e,idx,i);fi.click();};}
+    c.appendChild(slot);
+  }
+}
+function cargarImagen(e,idx,i){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=async ev=>{STATE.items[idx].imagenes[i]=await redimensionarImagen(ev.target.result,800,800);renderImagenes(idx);};reader.readAsDataURL(f);}
+function redimensionarImagen(dataUrl,maxW,maxH){return new Promise(resolve=>{const img=new Image();img.onload=function(){let w=img.width,h=img.height;if(w>maxW||h>maxH){const r=Math.min(maxW/w,maxH/h);w*=r;h*=r;}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',.8));};img.src=dataUrl;});}
+function eliminarImagen(idx,i){STATE.items[idx].imagenes[i]=null;renderImagenes(idx);}
+
+// ── PARÁMETROS / CONDICIONES ──
+function agregarParametro(){STATE.params.push({clave:'',valor:''});renderParams();}
+function renderParams(){
+  const c=document.getElementById('params-list');c.innerHTML='';
+  STATE.params.forEach((p,i)=>{const d=document.createElement('div');d.style.cssText='display:grid;grid-template-columns:1fr 1fr 30px;gap:8px;margin-bottom:6px;';
+    d.innerHTML=`<input type="text" value="${sanitize(p.clave)}" placeholder="Parámetro (ej: Dimensiones)" style="padding:8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.85rem;" onchange="STATE.params[${i}].clave=this.value">
+      <input type="text" value="${sanitize(p.valor)}" placeholder="Valor" style="padding:8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.85rem;" onchange="STATE.params[${i}].valor=this.value">
+      <button class="btn-del" onclick="STATE.params.splice(${i},1);renderParams()">✕</button>`;c.appendChild(d);});
+}
+function agregarCondicion(){STATE.conds.push({texto:''});renderConds();}
+function renderConds(){
+  const c=document.getElementById('conds-list');c.innerHTML='';
+  STATE.conds.forEach((cd,i)=>{const d=document.createElement('div');d.style.cssText='display:grid;grid-template-columns:1fr 30px;gap:8px;margin-bottom:6px;';
+    d.innerHTML=`<textarea style="padding:8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.85rem;resize:vertical;min-height:50px;" placeholder="Condición de oferta..." onchange="STATE.conds[${i}].texto=this.value">${sanitize(cd.texto)}</textarea>
+      <button class="btn-del" onclick="STATE.conds.splice(${i},1);renderConds()">✕</button>`;c.appendChild(d);});
+}
+
+// ── CÁLCULOS ──
+// BUG-10 FIX: se eliminó el recalcMat automático — calcularTotales ya NO sobrescribe el precio
+// manual del vendedor. recalcMat solo se llama cuando el usuario selecciona/cambia materiales.
+function calcularTotales(){
+  const sym=STATE.sym||'$';
+  const subtotal=STATE.items.reduce((s,it)=>(it.precioUnit||0)*(it.cantidad||1)+s,0);
+  const iva=parseFloat(document.getElementById('f-iva').value)||0;
+  const desc=parseFloat(document.getElementById('f-descuento').value)||0;
+  const descMonto=subtotal*(desc/100);const base=subtotal-descMonto;const ivaMonto=base*(iva/100);const total=base+ivaMonto;
+  const fmt=n=>sym+(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('r-sub').textContent=fmt(subtotal);
+  document.getElementById('r-iva').textContent=fmt(ivaMonto);
+  document.getElementById('r-total').textContent=fmt(total);
+  const drow=document.getElementById('r-desc-row');
+  if(descMonto>0){drow.style.display='flex';document.getElementById('r-desc').textContent='-'+fmt(descMonto);}
+  else drow.style.display='none';
+  document.getElementById('resumen-sec').style.display='block';
+  return{subtotal,descMonto,ivaMonto,total};
+}
+
+// ── GUARDAR / ENVIAR ──
+// BUG-02 FIX: preserva historial y fechaCreacion del registro existente
+function getCotData(estado){
+  const tots=calcularTotales();
+  const cots=DB.get('cotizaciones')||[];
+  const existing=STATE.editId?cots.find(c=>c.id===STATE.editId):null;
+  return{
+    id:STATE.editId||generateUUID(),
+    folio:STATE.editId?(existing?.folio||genFolio()):genFolio(),
+    fecha:document.getElementById('f-fecha').value,
+    cliente:document.getElementById('f-cliente').value,
+    proyecto:document.getElementById('f-proyecto').value,
+    atencion:document.getElementById('f-atencion').value,
+    solicitante:document.getElementById('f-solicitante').value,
+    lider:document.getElementById('f-lider').value,
+    notas:document.getElementById('f-notas').value,
+    iva:parseFloat(document.getElementById('f-iva').value)||16,
+    descuento:parseFloat(document.getElementById('f-descuento').value)||0,
+    moneda:STATE.moneda,sym:STATE.sym,
+    items:JSON.parse(JSON.stringify(STATE.items)),
+    params:JSON.parse(JSON.stringify(STATE.params)),
+    conds:JSON.parse(JSON.stringify(STATE.conds)),
+    subtotal:tots.subtotal,total:tots.total,estado,
+    vendedorId:STATE.user.id,vendedorNombre:STATE.user.nombre,
+    fechaCreacion:existing?.fechaCreacion||new Date().toISOString(),
+    historial:existing?.historial||[]
+  };
+}
+function guardarBorrador(){
+  if(!document.getElementById('f-cliente').value){toast('⚠️ Ingresa el nombre del cliente');return;}
+  const cots=DB.get('cotizaciones')||[];const data=getCotData('borrador');
+  const idx=cots.findIndex(c=>c.id===data.id);
+  if(idx>=0)cots[idx]=data;else cots.push(data);
+  DB.set('cotizaciones',cots);STATE.editId=data.id;toast('✓ Borrador guardado: '+data.folio);
+}
+// FIX-16: permite reenviar directamente una cotización rechazada
+function enviarACostos(){
+  if(!document.getElementById('f-cliente').value){toast('⚠️ Ingresa el nombre del cliente');return;}
+  if(!STATE.items.length||!STATE.items[0].desc){toast('⚠️ Agrega al menos un ítem');return;}
+  if(!confirm('¿Enviar a revisión de costos? Ya no podrás editarla.'))return;
+  const cots=DB.get('cotizaciones')||[];let data=getCotData('pendiente_costos');
+  const idx=cots.findIndex(c=>c.id===data.id);
+  if(idx>=0){
+    if(!transicionValida(cots[idx].estado,'pendiente_costos')){toast('No puedes enviar esta cotización en su estado actual.');return;}
+    cots[idx]=data;
+  }else cots.push(data);
+  agregarHistorial(data,'Enviado a revisión de costos');
+  DB.set('cotizaciones',cots);toast('📤 Cotización '+data.folio+' enviada a Costos');limpiarForm();
+}
+function iniciarAutoSave(){clearAutoSave();STATE.autoSaveTimer=setInterval(()=>{if(STATE.items.length>0&&document.getElementById('f-cliente').value)guardarBorradorSilencioso();},60000);}
+function clearAutoSave(){if(STATE.autoSaveTimer){clearInterval(STATE.autoSaveTimer);STATE.autoSaveTimer=null;}}
+function guardarBorradorSilencioso(){
+  const data=getCotData('borrador');const cots=DB.get('cotizaciones')||[];
+  const idx=cots.findIndex(c=>c.id===data.id);
+  if(idx>=0)cots[idx]=data;else cots.push(data);
+  DB.set('cotizaciones',cots);STATE.editId=data.id;
+}
+
+// ── MIS COTIZACIONES ──
+function renderMis(){
+  const c=document.getElementById('mis-list');c.innerHTML='';
+  const q=(document.getElementById('mis-search')?.value||'').toLowerCase();
+  const cots=(DB.get('cotizaciones')||[])
+    .filter(c=>c.vendedorId===STATE.user.id||hasRole('admin'))
+    .filter(c=>!q||c.folio?.toLowerCase().includes(q)||c.cliente?.toLowerCase().includes(q)||c.proyecto?.toLowerCase().includes(q)||c.vendedorNombre?.toLowerCase().includes(q))
+    .sort((a,b)=>b.fechaCreacion?.localeCompare(a.fechaCreacion||'')||0);
+  if(!cots.length){c.innerHTML='<div class="empty"><div class="ei">📋</div><p>No hay cotizaciones aún</p></div>';return;}
+  cots.forEach(cot=>{
+    const d=document.createElement('div');d.className='cot-card';
+    const puedeEditar=(cot.estado==='borrador'||cot.estado==='rechazada')&&(cot.vendedorId===STATE.user.id||hasRole('admin'));
+    const acciones=`
+      <button class="btn btn-t btn-sm" onclick="abrirDetalleCot('${cot.id}')">🔍 Ver</button>
+      ${puedeEditar?`<button class="btn btn-p btn-sm" onclick="cargarParaEditar('${cot.id}')">✏️ Editar</button>`:''}`;
+    d.innerHTML=`<div class="cot-card-hdr">
+      <div><div class="cot-folio">${sanitize(cot.folio)}</div><div class="cot-meta"><span>${sanitize(cot.cliente)}</span> · ${sanitize(cot.proyecto)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${badgeHtml(cot.estado)}${acciones}</div></div>
+      <div class="cot-body" style="font-size:.82rem;color:var(--n5);">
+        ${cot.items?.length||0} ítems · ${cot.moneda} ${fmtNum(cot.total)} · ${fmtFecha(cot.fecha)}
+        ${cot.notasJefe?`<div style="margin-top:6px;padding:8px;background:var(--pl);border-radius:6px;color:var(--p);font-size:.78rem;">📝 Jefe: ${sanitize(cot.notasJefe)}</div>`:''}
+      </div>`;
+    c.appendChild(d);
+  });
+}
+
+// ── REVISIÓN COSTOS ──
+function renderCostos(){
+  const c=document.getElementById('costos-list');c.innerHTML='';
+  const cots=(DB.get('cotizaciones')||[]).filter(c=>c.estado==='pendiente_costos');
+  if(!cots.length){c.innerHTML='<div class="empty"><div class="ei">🔍</div><p>No hay cotizaciones pendientes de revisión</p></div>';return;}
+  cots.forEach(cot=>{
+    const d=document.createElement('div');d.className='cot-card';
+    d.innerHTML=`<div class="cot-card-hdr">
+      <div><div class="cot-folio">${sanitize(cot.folio)}</div>
+        <div class="cot-meta"><span>${sanitize(cot.cliente)}</span> · ${sanitize(cot.proyecto)} · Vendedor: ${sanitize(cot.vendedorNombre)}</div></div>
+      ${badgeHtml(cot.estado)}</div>
+      <div class="cot-body"><div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-out btn-sm" onclick="abrirDetalleCot('${cot.id}')">🔍 Ver Detalle</button>
+        <button class="btn btn-ok btn-sm" onclick="aprobarCostos('${cot.id}')">✓ Aprobar</button>
+        <button class="btn btn-ng btn-sm" onclick="rechazarCostos('${cot.id}')">✗ Rechazar</button>
+      </div></div>`;
+    c.appendChild(d);
+  });
+}
+function aprobarCostos(id){
+  if(!confirm('¿Aprobar la estructura de costos y enviar al jefe?'))return;
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
+  if(!transicionValida(cots[idx].estado,'pendiente_jefe')){toast('Transición no permitida.');return;}
+  cots[idx].estado='pendiente_jefe';cots[idx].fechaCostos=new Date().toISOString();
+  agregarHistorial(cots[idx],'Aprobado por costos');DB.set('cotizaciones',cots);toast('✓ Cotización enviada a Jefe');renderCostos();
+}
+function rechazarCostos(id){STATE.rechazoCotId=id;document.getElementById('rechazo-motivo').value='';openModal('modal-rechazo');}
+function confirmarRechazo(){
+  const motivo=document.getElementById('rechazo-motivo').value;if(!motivo){toast('⚠️ Ingresa el motivo');return;}
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===STATE.rechazoCotId);if(idx<0)return;
+  if(!transicionValida(cots[idx].estado,'rechazada')){toast('No se puede rechazar en este estado.');return;}
+  cots[idx].estado='rechazada';cots[idx].comentarioCostos=motivo;
+  agregarHistorial(cots[idx],'Rechazado: '+motivo);DB.set('cotizaciones',cots);
+  closeModal('modal-rechazo');toast('✗ Cotización rechazada');renderCostos();
+}
+
+// ── APROBACIÓN JEFE ──
+function renderJefe(){
+  const c=document.getElementById('jefe-list');c.innerHTML='';
+  const cots=(DB.get('cotizaciones')||[]).filter(c=>c.estado==='pendiente_jefe');
+  if(!cots.length){c.innerHTML='<div class="empty"><div class="ei">✅</div><p>No hay cotizaciones pendientes de aprobación</p></div>';return;}
+  cots.forEach(cot=>{
+    const d=document.createElement('div');d.className='cot-card';
+    d.innerHTML=`<div class="cot-card-hdr">
+      <div><div class="cot-folio">${sanitize(cot.folio)}</div><div class="cot-meta"><span>${sanitize(cot.cliente)}</span> · ${sanitize(cot.proyecto)}</div></div>
+      ${badgeHtml(cot.estado)}</div>
+      <div class="cot-body">
+        <div style="font-size:.82rem;color:var(--n5);">${cot.items?.length||0} ítems · Costo materiales: ${cot.moneda} ${fmtNum(cot.subtotal)}</div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-out btn-sm" onclick="abrirDetalleCot('${cot.id}')">🔍 Ver Detalle</button>
+          <button class="btn btn-p btn-sm" onclick="abrirJefeAprob('${cot.id}')">✏️ Definir Costos y Aprobar</button>
+        </div></div>`;
+    c.appendChild(d);
+  });
+}
+function abrirJefeAprob(id){
+  const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===id);
+  STATE.jefeAprobId=id;
+  // FIX-11: sincronizar precioUnit desde los materiales al abrir la Aprobación Final.
+  // Sin esto, un ítem con materiales (p.ej. $34,275) mostraba "precio ítem: $1" y —peor—
+  // calcEscenarios usaba cot.subtotal=$1 como base del margen. Solo toca ítems CON
+  // materiales (matTotal>0); los de precio manual quedan intactos (respeta BUG-10).
+  (cot.items||[]).forEach(it=>{
+    const matTotal=(it.materiales||[]).reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);
+    if(matTotal>0)it.precioUnit=matTotal;
+  });
+  cot.subtotal=(cot.items||[]).reduce((s,it)=>(it.precioUnit||0)*(it.cantidad||1)+s,0);
+  saveCotById(cot);
+  STATE.jefeCostos=cot.jefeCostos?JSON.parse(JSON.stringify(cot.jefeCostos)):[
+    {label:'Mano de Obra',tipo:'pct',valor:25},
+    {label:'Costos Operativos',tipo:'pct',valor:15},
+    {label:'Flete',tipo:'monto',valor:0},
+    {label:'Instalación',tipo:'monto',valor:0}
+  ];
+  const savedMargs=cot.jefeMargs||[10,20,30,40];
+  const monedaOpts=['MXN','USD','EUR','CRC'].map(m=>`<option${m===(cot.monedaFinal||cot.moneda)?' selected':''}>${m}</option>`).join('');
+  const sym=cot.sym||'$';
+
+  // ── TAB 1: Propuesta completa ──
+  const serviciosItem=it=>{const s=[];if(it.incluye_inst)s.push('Incluye Instalación');if(it.incluye_flete)s.push('Incluye Flete');return s.join(' · ');};
+  const itemsTab1=(cot.items||[]).map((it,i)=>`
+    <div style="background:var(--n1);border-radius:var(--r-sm);padding:14px;margin-bottom:10px;border:1.5px solid var(--n3);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-weight:800;color:var(--p);font-size:.9rem;">Ítem ${i+1}</div>
+        <div style="font-size:.82rem;font-weight:700;color:var(--td);">${sym}${fmtNum((it.precioUnit||0)*(it.cantidad||1))}</div>
+      </div>
+      <div style="font-size:.85rem;margin-bottom:4px;">${sanitize(it.desc||'—')}</div>
+      <div style="font-size:.78rem;color:var(--n5);">Cant: ${it.cantidad} ${it.unidad}${serviciosItem(it)?' · '+serviciosItem(it):''}</div>
+      ${it.imagenes?.filter(Boolean).length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${it.imagenes.filter(Boolean).map(img=>`<img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:2px solid var(--n3);">`).join('')}</div>`:''}
+    </div>`).join('');
+  const paramsTab1=cot.params?.length?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📐 Parámetros Técnicos</h4>${cot.params.map(p=>`<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:.82rem;padding:3px 0;border-bottom:1px solid var(--n1);"><span style="color:var(--n5);">${sanitize(p.clave)}</span><span style="font-weight:600;">${sanitize(p.valor)}</span></div>`).join('')}</div>`:'';
+  const condsTab1=cot.conds?.length?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📋 Condiciones de Oferta</h4>${cot.conds.map((cd,i)=>`<div style="font-size:.82rem;padding:4px 0;border-bottom:1px solid var(--n1);">${i+1}. ${sanitize(cd.texto)}</div>`).join('')}</div>`:'';
+  const tab1=`
+    <div class="aprob-box" style="margin-bottom:10px;">
+      <h4>👤 Datos del Cliente</h4>
+      <div class="g2" style="font-size:.85rem;">
+        <div><span style="color:var(--n5);">Cliente:</span> <strong>${sanitize(cot.cliente)}</strong></div>
+        <div><span style="color:var(--n5);">Proyecto:</span> <strong>${sanitize(cot.proyecto)}</strong></div>
+        <div><span style="color:var(--n5);">Atención:</span> ${sanitize(cot.atencion||'—')}</div>
+        <div><span style="color:var(--n5);">Solicitante:</span> ${sanitize(cot.solicitante||'—')}</div>
+        <div><span style="color:var(--n5);">Líder:</span> ${sanitize(cot.lider||'—')}</div>
+        <div><span style="color:var(--n5);">Fecha:</span> ${fmtFecha(cot.fecha)}</div>
+        <div><span style="color:var(--n5);">Moneda:</span> ${sanitize(cot.moneda)}${cot.iva?` · IVA ${cot.iva}%`:''}</div>
+        <div><span style="color:var(--n5);">Vendedor:</span> ${sanitize(cot.vendedorNombre||'—')}</div>
+      </div>
+    </div>
+    <div class="aprob-box" style="margin-bottom:10px;">
+      <h4>🗂️ Ítems de la Propuesta (${(cot.items||[]).length})</h4>
+      ${itemsTab1||'<div style="color:var(--n5);font-size:.85rem;">Sin ítems</div>'}
+    </div>
+    ${cot.notas?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📝 Notas del Vendedor</h4><div style="font-size:.85rem;">${sanitize(cot.notas)}</div></div>`:''}
+    ${paramsTab1}${condsTab1}
+    <div style="text-align:right;margin-top:4px;">
+      <button class="btn btn-t btn-sm" onclick="verPreliminarCot('${id}')">👁️ Ver como Cliente Final</button>
+    </div>`;
+
+  // ── TAB 2: Materiales editables ──
+  const tab2Items=(cot.items||[]).map((it,i)=>{
+    const matTotal=(it.materiales||[]).reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);
+    return `<div style="background:var(--n1);border-radius:var(--r-sm);padding:12px;margin-bottom:12px;border:1.5px solid var(--n3);">
+      <div style="font-weight:800;color:var(--p);font-size:.88rem;margin-bottom:10px;">Ítem ${i+1}: ${sanitize(it.desc)}</div>
+      <div id="jamat-${i}"></div>
+      <button class="btn btn-t btn-sm" style="margin-top:8px;font-size:.75rem;" onclick="agregarMatJefe('${id}',${i})">+ Agregar Material</button>
+      <div style="margin-top:8px;font-size:.82rem;font-weight:700;color:var(--td);">
+        💰 Costo acumulado: <span id="jacost-${i}" style="color:var(--p);">${sym}${fmtNum(matTotal)}</span>
+        <span style="font-size:.72rem;font-weight:400;color:var(--n5);margin-left:8px;">(precio ítem: ${sym}${fmtNum((it.precioUnit||0)*(it.cantidad||1))})</span>
+      </div>
+    </div>`;
+  }).join('');
+  const tab2=`<div class="aprob-box">
+    <h4>📦 Materiales por Ítem — Validación y Edición</h4>
+    <div style="font-size:.78rem;color:var(--n5);margin-bottom:12px;">Agrega, edita o elimina materiales. Los cambios se guardan al instante y actualizan la base de costos en Tab 💼.</div>
+    ${tab2Items||'<div style="color:var(--n5);">Sin ítems</div>'}
+  </div>`;
+
+  // ── TAB 3: Costos & Precio ──
+  const matRows=(cot.items||[]).map((it,i)=>{
+    const matTotal=(it.materiales||[]).reduce((s,m)=>s+(m.costoUnit||0)*(m.cantidad||1),0);
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(90,45,130,.08);font-size:.82rem;">
+      <span>Ítem ${i+1}: ${sanitize(it.desc)}</span>
+      <span style="font-weight:700;color:var(--p);">${sym}${fmtNum(matTotal)}</span>
+    </div>`;
+  }).join('');
+  const tab3=`
+    <div style="font-size:.85rem;margin-bottom:12px;">
+      <span style="color:var(--n5);">Costo base materiales: </span><strong id="ja-base-costo">${cot.moneda} ${fmtNum(cot.subtotal)}</strong>
+      <span style="font-size:.72rem;color:var(--n5);margin-left:8px;">(actualiza en Tab 📦 y recalcula)</span>
+    </div>
+    ${matRows?`<div class="aprob-box" style="margin-bottom:10px;"><h4>📦 Resumen de Costos por Ítem</h4>${matRows}</div>`:''}
+    <div class="aprob-box" style="margin-bottom:10px;">
+      <h4>💼 Costos Adicionales</h4>
+      <div id="ja-costos-list"></div>
+      <button class="btn btn-t btn-sm" style="margin-top:8px;font-size:.75rem;" onclick="agregarJefeCosto()">+ Agregar Costo</button>
+    </div>
+    <div class="aprob-box" style="margin-bottom:10px;">
+      <h4>📈 Escenarios de Margen</h4>
+      <div class="g4" style="margin-bottom:12px;">
+        <div class="fg"><label>Margen 1 (%)</label><input type="number" id="ja-m1" value="${savedMargs[0]}" min="0" step="1"></div>
+        <div class="fg"><label>Margen 2 (%)</label><input type="number" id="ja-m2" value="${savedMargs[1]}" min="0" step="1"></div>
+        <div class="fg"><label>Margen 3 (%)</label><input type="number" id="ja-m3" value="${savedMargs[2]}" min="0" step="1"></div>
+        <div class="fg"><label>Margen 4 (%)</label><input type="number" id="ja-m4" value="${savedMargs[3]}" min="0" step="1"></div>
+      </div>
+      <button class="btn btn-p btn-sm" style="width:100%;margin-bottom:10px;" onclick="calcEscenarios('${id}')">🧮 Calcular Escenarios</button>
+      <div id="ja-desglose" style="display:none;margin-bottom:14px;"></div>
+      <div class="margin-grid" id="ja-escenarios"></div>
+    </div>
+    <div class="aprob-box" style="margin-bottom:10px;">
+      <h4>💰 Precio Final</h4>
+      <div class="g2" style="margin-bottom:10px;">
+        <div class="fg"><label>Precio Final (editable)</label>
+          <input type="number" id="ja-precio" value="${cot.precioFinal||''}" step="0.01" placeholder="Selecciona escenario...">
+        </div>
+        <div class="fg"><label>Moneda</label>
+          <select id="ja-moneda" onchange="event.stopPropagation()">${monedaOpts}</select>
+        </div>
+      </div>
+      <button class="btn btn-t btn-sm" style="width:100%;" onclick="verPreliminarCot('${id}')">👁️ Ver Preliminar de Cotización</button>
+    </div>
+    <div class="fg">
+      <label>Notas para el Vendedor</label>
+      <textarea id="ja-notas" placeholder="Observaciones..." style="min-height:80px;">${sanitize(cot.notasJefe||'')}</textarea>
+    </div>
+    <input type="hidden" id="ja-sel-margen" value="">`;
+
+  const body=document.getElementById('ja-body');
+  body.innerHTML=`
+    <div class="ja-tabs">
+      <button class="ja-tab active" onclick="jaTab(0)">📋 Propuesta Completa</button>
+      <button class="ja-tab" onclick="jaTab(1)">📦 Materiales</button>
+      <button class="ja-tab" onclick="jaTab(2)">💼 Costos & Precio</button>
+    </div>
+    <div class="ja-pane active" id="ja-pane-0">${tab1}</div>
+    <div class="ja-pane" id="ja-pane-1">${tab2}</div>
+    <div class="ja-pane" id="ja-pane-2">${tab3}</div>`;
+  renderJefeCostos();
+  (cot.items||[]).forEach((_,i)=>renderJefeMatModal(id,i));
+  openModal('modal-jefe-aprob');
+}
+function calcEscenarios(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  const base=cot.subtotal||0;
+  const sym=(document.getElementById('ja-moneda')?.value||cot.moneda)+' ';
+  let costoAdicTotal=0;
+  const desgloseItems=STATE.jefeCostos.map(item=>{
+    const monto=item.tipo==='pct'?base*(item.valor/100):(item.valor||0);
+    costoAdicTotal+=monto;
+    return{label:item.label||'Costo',tipo:item.tipo,valor:item.valor,monto};
+  });
+  const costoTotal=base+costoAdicTotal;
+  const margs=[
+    parseFloat(document.getElementById('ja-m1')?.value)||10,
+    parseFloat(document.getElementById('ja-m2')?.value)||20,
+    parseFloat(document.getElementById('ja-m3')?.value)||30,
+    parseFloat(document.getElementById('ja-m4')?.value)||40
+  ];
+  const desgEl=document.getElementById('ja-desglose');
+  if(desgEl){
+    const rows=desgloseItems.map(d=>`
+      <div class="desg-row">
+        <span>${sanitize(d.label)}${d.tipo==='pct'?' ('+d.valor+'%)':''}</span>
+        <span>${sym}${fmtNum(d.monto)}</span>
+      </div>`).join('');
+    desgEl.innerHTML=`<div class="desg-box">
+      <div class="desg-row desg-head"><span>📦 Materiales (base)</span><span>${sym}${fmtNum(base)}</span></div>
+      ${rows}
+      <div class="desg-sep"></div>
+      <div class="desg-row desg-sub"><span>Subtotal costos</span><span>${sym}${fmtNum(costoTotal)}</span></div>
+    </div>`;
+    desgEl.style.display='block';
+  }
+  const selVal=document.getElementById('ja-sel-margen')?.value||'';
+  const grid=document.getElementById('ja-escenarios');if(!grid)return;
+  grid.innerHTML='';
+  margs.forEach((m,i)=>{
+    const precio=costoTotal*(1+m/100);
+    const ganancia=precio-costoTotal;
+    const d=document.createElement('div');
+    d.className='margin-item'+(selVal==precio.toFixed(2)?' selected':'');
+    const cardRows=desgloseItems.map(di=>`
+      <div class="mc-row"><span>${sanitize(di.label)}</span><span>${sym}${fmtNum(di.monto)}</span></div>`).join('');
+    d.innerHTML=`
+      <label>Opción ${i+1}</label>
+      <div class="mc-desg">
+        <div class="mc-row"><span>Materiales</span><span>${sym}${fmtNum(base)}</span></div>
+        ${cardRows}
+        <div class="mc-sep"></div>
+        <div class="mc-row"><span>Subtotal</span><span>${sym}${fmtNum(costoTotal)}</span></div>
+        <div class="mc-row mc-margen"><span>+ Margen ${m}%</span><span>${sym}${fmtNum(ganancia)}</span></div>
+      </div>
+      <div class="m-val">${sym}${fmtNum(precio)}</div>
+      <div class="m-pct">Precio final · Margen ${m}%</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.margin-item').forEach(el=>el.classList.remove('selected'));
+      d.classList.add('selected');
+      document.getElementById('ja-precio').value=precio.toFixed(2);
+      document.getElementById('ja-sel-margen').value=precio.toFixed(2);
+    };
+    grid.appendChild(d);
+  });
+}
+function confirmarJefeAprob(){
+  const precio=parseFloat(document.getElementById('ja-precio')?.value)||0;
+  if(!precio){toast('⚠️ Selecciona un escenario o ingresa el precio final');return;}
+  if(!confirm('¿Aprobar cotización con el precio definido?'))return;
+  const cots=DB.get('cotizaciones');
+  const idx=cots.findIndex(c=>c.id===STATE.jefeAprobId);if(idx<0)return;
+  if(!transicionValida(cots[idx].estado,'aprobada')){toast('No se puede aprobar en este estado.');return;}
+  cots[idx].estado='aprobada';
+  cots[idx].precioFinal=precio;
+  cots[idx].monedaFinal=document.getElementById('ja-moneda').value;
+  cots[idx].jefeCostos=STATE.jefeCostos;
+  cots[idx].jefeMargs=[1,2,3,4].map(n=>parseFloat(document.getElementById('ja-m'+n)?.value)||0);
+  cots[idx].notasJefe=document.getElementById('ja-notas').value;
+  cots[idx].fechaAprobacion=new Date().toISOString();
+  agregarHistorial(cots[idx],'Aprobado por jefe. Precio: '+precio);
+  DB.set('cotizaciones',cots);
+  closeModal('modal-jefe-aprob');
+  toast('✓ Cotización aprobada con precio '+fmtNum(precio));
+  renderJefe();
+}
+
+// ── JEFE APROB: HELPERS ──
+function renderJefeCostos(){
+  const c=document.getElementById('ja-costos-list');if(!c)return;
+  c.innerHTML='';
+  STATE.jefeCostos.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='jc-row';
+    row.innerHTML=`
+      <input type="text" class="jc-label" placeholder="Ej: Mano de Obra" value="${sanitize(item.label)}"
+        oninput="STATE.jefeCostos[${i}].label=this.value">
+      <button class="jc-toggle${item.tipo==='pct'?' active':''}" onclick="toggleJefeCostoTipo(${i})">${item.tipo==='pct'?'%':'$'}</button>
+      <input type="number" class="jc-val" min="0" step="0.01" value="${item.valor||0}"
+        oninput="STATE.jefeCostos[${i}].valor=parseFloat(this.value)||0">
+      <button class="btn-del" style="padding:4px 8px;" onclick="eliminarJefeCosto(${i})">✕</button>`;
+    c.appendChild(row);
+  });
+}
+function toggleJefeCostoTipo(i){
+  STATE.jefeCostos[i].tipo=STATE.jefeCostos[i].tipo==='pct'?'monto':'pct';
+  renderJefeCostos();
+}
+function agregarJefeCosto(){
+  STATE.jefeCostos.push({label:'',tipo:'pct',valor:0});
+  renderJefeCostos();
+}
+function eliminarJefeCosto(i){
+  STATE.jefeCostos.splice(i,1);
+  renderJefeCostos();
+}
+function jaTab(n){
+  document.querySelectorAll('.ja-tab').forEach((t,i)=>t.classList.toggle('active',i===n));
+  document.querySelectorAll('.ja-pane').forEach((p,i)=>p.classList.toggle('active',i===n));
+}
+function renderJefeMatModal(cotId,iIdx){
+  const cot=getCotById(cotId);if(!cot)return;
+  const c=document.getElementById('jamat-'+iIdx);if(!c)return;
+  c.innerHTML='';
+  const mats=cot.items[iIdx].materiales||[];
+  const sym=cot.sym||'$';
+  mats.forEach((m,mi)=>{
+    const row=document.createElement('div');row.className='mat-row';
+    const dropId='jadrop-'+iIdx+'-'+mi;
+    row.innerHTML=`
+      <div class="mat-search-wrap">
+        <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;"
+          placeholder="Buscar material..." value="${sanitize(m.nombre||'')}"
+          oninput="buscarMatJefe(this,'${dropId}','${cotId}',${iIdx},${mi})"
+          onfocus="document.getElementById('${dropId}').classList.add('open')"
+          onblur="setTimeout(()=>document.getElementById('${dropId}').classList.remove('open'),200)">
+        <div class="mat-dropdown" id="${dropId}"></div>
+      </div>
+      <input type="number" min="0" step="0.01" value="${m.cantidad||1}" placeholder="Cant."
+        style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;"
+        onchange="updateMatJefe('${cotId}',${iIdx},${mi},'cantidad',parseFloat(this.value)||1)">
+      <input type="number" readonly value="${m.costoUnit||0}"
+        style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);"
+        placeholder="C.Unit">
+      <button class="btn-del" style="padding:4px 6px;" onclick="eliminarMatJefe('${cotId}',${iIdx},${mi})">✕</button>`;
+    c.appendChild(row);
+  });
+  const costEl=document.getElementById('jacost-'+iIdx);
+  if(costEl){
+    const total=mats.reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);
+    costEl.textContent=sym+fmtNum(total);
+  }
+}
+function agregarMatJefe(cotId,iIdx){
+  const cot=getCotById(cotId);if(!cot)return;
+  if(!cot.items[iIdx].materiales)cot.items[iIdx].materiales=[];
+  cot.items[iIdx].materiales.push({matIdx:null,nombre:'',cantidad:1,costoUnit:0});
+  saveAndRecalcJefe(cotId,iIdx);
+}
+function eliminarMatJefe(cotId,iIdx,mi){
+  const cot=getCotById(cotId);if(!cot)return;
+  cot.items[iIdx].materiales.splice(mi,1);
+  saveAndRecalcJefe(cotId,iIdx);
+}
+function updateMatJefe(cotId,iIdx,mi,field,val){
+  const cot=getCotById(cotId);if(!cot)return;
+  cot.items[iIdx].materiales[mi][field]=val;
+  saveAndRecalcJefe(cotId,iIdx);
+}
+function buscarMatJefe(inp,dropId,cotId,iIdx,mi){
+  const q=inp.value.toLowerCase();
+  const cot=getCotById(cotId);if(!cot)return;
+  cot.items[iIdx].materiales[mi].nombre=inp.value;
+  saveCotById(cot);
+  const drop=document.getElementById(dropId);if(!drop)return;
+  const mats=DB.get('materiales')||[];
+  const matches=q.length>1
+    ?mats.filter(m=>m.descripcion.toLowerCase().includes(q)||m.codigo.toLowerCase().includes(q))
+    :mats.slice(0,12);
+  drop.innerHTML='';
+  matches.forEach(m=>{
+    const opt=document.createElement('div');opt.className='mat-opt';
+    opt.innerHTML=`<div>${sanitize(m.descripcion)}</div><div class="mat-cod">${sanitize(m.codigo)} · $${fmtNum(m.costoUnitario)}</div>`;
+    opt.onmousedown=()=>{
+      inp.value=m.descripcion;
+      const c=getCotById(cotId);if(!c)return;
+      c.items[iIdx].materiales[mi].nombre=m.descripcion;
+      c.items[iIdx].materiales[mi].costoUnit=m.costoUnitario;
+      c.items[iIdx].materiales[mi].matCod=m.codigo;
+      saveAndRecalcJefe(cotId,iIdx);
+      drop.classList.remove('open');
+    };
+    drop.appendChild(opt);
+  });
+  drop.classList.toggle('open',matches.length>0||q.length>0);
+}
+function saveAndRecalcJefe(cotId,iIdx){
+  const cot=getCotById(cotId);if(!cot)return;
+  const mats=cot.items[iIdx].materiales||[];
+  const cost=mats.reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);
+  if(cost>0)cot.items[iIdx].precioUnit=cost;
+  cot.subtotal=(cot.items||[]).reduce((s,it)=>(it.precioUnit||0)*(it.cantidad||1)+s,0);
+  saveCotById(cot);
+  renderJefeMatModal(cotId,iIdx);
+  const baseEl=document.getElementById('ja-base-costo');
+  if(baseEl)baseEl.textContent=cot.moneda+' '+fmtNum(cot.subtotal);
+}
+function verPreliminarCot(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  const precio=parseFloat(document.getElementById('ja-precio')?.value)||cot.precioFinal||cot.total||0;
+  const moneda=document.getElementById('ja-moneda')?.value||cot.monedaFinal||cot.moneda;
+  const sym=cot.sym||'$';
+  const rows=(cot.items||[]).map((it,i)=>`
+    <tr>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--n2);">${i+1}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--n2);">${sanitize(it.desc||'')}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--n2);">${it.cantidad} ${it.unidad}</td>
+      <td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--n2);">${sym}${fmtNum(it.precioUnit)}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:700;border-bottom:1px solid var(--n2);">${sym}${fmtNum((it.precioUnit||0)*(it.cantidad||1))}</td>
+    </tr>`).join('');
+  const body=document.getElementById('prelim-body');
+  body.innerHTML=`
+    <div class="prelim-wrap">
+      <div style="background:var(--p);color:#fff;padding:14px 18px;border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:44px;background:rgba(255,255,255,.95);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:3px;"><img src="" class="logo-prelim" style="width:100%;height:100%;object-fit:contain;"></div>
+          <div>
+            <div style="font-size:1.3rem;font-weight:900;letter-spacing:-1px;">TACRE</div>
+            <div style="font-size:.68rem;opacity:.8;">Creatividad & Diseño</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.8;">Cotización</div>
+          <div style="font-weight:700;">${sanitize(cot.folio)}</div>
+          <div style="font-size:.72rem;opacity:.7;">${fmtFecha(cot.fecha)}</div>
+        </div>
+      </div>
+      <div style="background:var(--wh);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.82rem;line-height:1.7;">
+        <div><strong>Cliente:</strong> ${sanitize(cot.cliente)}</div>
+        <div><strong>Proyecto:</strong> ${sanitize(cot.proyecto)}</div>
+        ${cot.atencion?`<div><strong>Atención:</strong> ${sanitize(cot.atencion)}</div>`:''}
+        ${cot.solicitante?`<div><strong>Solicitante:</strong> ${sanitize(cot.solicitante)}</div>`:''}
+      </div>
+      <div class="overflow-x">
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+          <thead>
+            <tr style="background:var(--p);color:#fff;">
+              <th style="padding:8px 10px;width:30px;text-align:center;">#</th>
+              <th style="padding:8px 10px;">Descripción</th>
+              <th style="padding:8px 10px;text-align:center;">Cantidad</th>
+              <th style="padding:8px 10px;text-align:right;">P. Unitario</th>
+              <th style="padding:8px 10px;text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+        <div style="background:linear-gradient(135deg,var(--p),var(--t));color:#fff;padding:14px 22px;border-radius:8px;text-align:right;min-width:180px;">
+          <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.85;">Precio Final Aprobado</div>
+          <div style="font-size:1.4rem;font-weight:900;margin-top:4px;">${moneda} ${fmtNum(precio)}</div>
+        </div>
+      </div>
+      ${cot.conds?.length?`<div style="margin-top:12px;padding:10px 14px;background:var(--wh);border-radius:8px;font-size:.75rem;color:var(--n7);">
+        <div style="font-weight:800;color:var(--n9);margin-bottom:6px;font-size:.8rem;">Condiciones de Oferta</div>
+        ${cot.conds.map((cd,i)=>`<div style="padding:2px 0;">${i+1}. ${sanitize(cd.texto)}</div>`).join('')}
+      </div>`:''}
+    </div>`;
+  document.querySelectorAll('.logo-prelim').forEach(im=>im.src=LOGO_B64);
+  openModal('modal-prelim-cot');
+}
+
+// ── DETALLE COTIZACIÓN ──
+// FIX-17/18: botones y PDF también en estados negociacion y aceptada
+function abrirDetalleCot(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  const body=document.getElementById('mc-body');
+  document.getElementById('mc-title').textContent=cot.folio+' — '+cot.cliente;
+  let puedeEditar=false;
+  if(cot.estado==='borrador'||cot.estado==='rechazada')puedeEditar=(cot.vendedorId===STATE.user.id||hasRole('admin'));
+  else if(cot.estado==='pendiente_costos'&&(hasRole('costos')||hasRole('admin')))puedeEditar=true;
+  else if(cot.estado==='pendiente_jefe'&&(hasRole('jefe')||hasRole('admin')))puedeEditar=true;
+  const canEditMats=cot.estado==='pendiente_costos'&&(hasRole('costos')||hasRole('admin'));
+  const showMats=canEditMats||(cot.estado==='pendiente_jefe'&&(hasRole('jefe')||hasRole('admin')));
+  body.innerHTML=`<div style="font-size:.85rem;margin-bottom:12px;"><div class="g2">
+    <div><span style="color:var(--n5);">Cliente: </span><strong>${sanitize(cot.cliente)}</strong></div>
+    <div><span style="color:var(--n5);">Proyecto: </span><strong>${sanitize(cot.proyecto)}</strong></div>
+    <div><span style="color:var(--n5);">Fecha: </span>${fmtFecha(cot.fecha)}</div>
+    <div><span style="color:var(--n5);">Estado: </span>${badgeHtml(cot.estado)}</div></div></div>
+    ${(cot.estado==='aprobada'||cot.estado==='enviada'||cot.estado==='aceptada'||cot.estado==='negociacion')?`<div style="background:var(--tl);border-radius:var(--r-sm);padding:12px;margin-bottom:12px;font-size:.88rem;">
+      <strong>💰 Precio Aprobado: ${cot.monedaFinal||cot.moneda} ${fmtNum(cot.precioFinal)}</strong>
+      ${cot.notasJefe?`<br><span style="color:var(--n5);">Notas del jefe: ${sanitize(cot.notasJefe)}</span>`:''}
+    </div>`:''}
+    ${cot.comentarioCostos?`<div style="background:#fef2f2;border-radius:var(--r-sm);padding:10px;margin-bottom:10px;font-size:.82rem;color:#dc2626;">✗ Rechazada: ${sanitize(cot.comentarioCostos)}</div>`:''}
+    <div style="font-size:.82rem;">${(cot.items||[]).map((it,i)=>`<div style="padding:10px 0;border-bottom:1px solid var(--n1);">
+      <div style="font-weight:700;">Ítem ${i+1}: ${sanitize(it.desc)}</div>
+      <div style="color:var(--n5);">${it.cantidad} ${it.unidad} · ${cot.sym||'$'}${fmtNum((it.precioUnit||0)*(it.cantidad||1))}</div>
+      ${it.imagenes?.filter(Boolean).length?`<div style="display:flex;gap:5px;margin-top:5px;">${it.imagenes.filter(Boolean).map(img=>`<img src="${img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`).join('')}</div>`:''}
+      ${showMats?`<div style="margin-top:10px;background:var(--tl);border-radius:8px;padding:10px;border:1px solid rgba(0,168,168,.15);">
+        <div style="font-size:.68rem;font-weight:800;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📦 Materiales${canEditMats?'':' <span style="font-weight:400;color:var(--n5);">(solo lectura)</span>'}</div>
+        <div id="mmat-${i}"></div>
+        ${canEditMats?`<button class="btn btn-t btn-sm" style="margin-top:8px;font-size:.75rem;" onclick="agregarMatModal('${cot.id}',${i})">+ Agregar Material</button>`:''}
+        <div style="margin-top:8px;font-size:.82rem;font-weight:700;">
+          💰 Costo acumulado materiales: <span id="mcost-${i}" style="color:var(--p);">$0</span>
+          <span style="font-size:.72rem;font-weight:400;color:var(--n5);margin-left:8px;">(precio ítem: ${cot.sym||'$'}${fmtNum((it.precioUnit||0)*(it.cantidad||1))})</span>
+        </div>
+      </div>`:''}
+    </div>`).join('')}</div>
+    <div style="margin-top:12px;font-size:.78rem;color:var(--n5);background:var(--n1);padding:8px;border-radius:6px;">
+      <div style="font-weight:700;color:var(--p);">Historial de cambios:</div>
+      ${cot.historial?.length?cot.historial.map(h=>`<div>${fmtFecha(h.fecha.slice(0,10))} - ${sanitize(h.usuario)}: ${sanitize(h.cambio)}</div>`).join(''):'Sin historial'}
+    </div>
+    ${puedeEditar?`<div class="sep"></div><div class="btn-row">
+      ${(cot.estado==='borrador'||cot.estado==='rechazada')?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">✏️ Editar</button>`:''}
+      ${cot.estado==='pendiente_costos'?`<button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');aprobarCostos('${id}')">✓ Aprobar Estructura</button><button class="btn btn-ng btn-sm" onclick="closeModal('modal-cot');rechazarCostos('${id}')">✗ Rechazar</button>`:''}
+      ${cot.estado==='pendiente_jefe'?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirJefeAprob('${id}')">✏️ Definir Costos</button>`:''}
+    </div>`:''}`;
+  if(showMats)(cot.items||[]).forEach((_,i)=>renderMatModal(cot.id,i,!canEditMats));
+  const footer=document.getElementById('mc-footer');
+  footer.innerHTML='<button class="btn btn-out btn-sm" onclick="closeModal(\'modal-cot\')">Cerrar</button>';
+  // BUG-04 FIX: separar botones según estado aprobada vs enviada
+  if(cot.estado==='aprobada'&&(cot.vendedorId===STATE.user.id||hasRole('admin'))){
+    footer.innerHTML+=`
+      <button class="btn btn-t btn-sm" onclick="generarPDF('${id}')">📄 PDF</button>
+      <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');compartirWA('${id}')">📱 WhatsApp</button>
+      <button class="btn btn-t btn-sm" onclick="closeModal('modal-cot');compartirEmail('${id}')">✉️ Correo</button>
+      <button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');marcarComoEnviada('${id}')">📤 Marcar como Enviada</button>`;
+  }
+  if(cot.estado==='enviada'&&(cot.vendedorId===STATE.user.id||hasRole('admin'))){
+    footer.innerHTML+=`
+      <button class="btn btn-t btn-sm" onclick="generarPDF('${id}')">📄 PDF</button>
+      <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');compartirWA('${id}')">📱 WhatsApp</button>
+      <button class="btn btn-t btn-sm" onclick="closeModal('modal-cot');compartirEmail('${id}')">✉️ Correo</button>
+      <button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirModalEnviar('${id}')">📋 Registrar Respuesta Cliente</button>`;
+  }
+  // FIX-17: negociación permite reenviar y registrar respuesta definitiva
+  if(cot.estado==='negociacion'&&(cot.vendedorId===STATE.user.id||hasRole('admin'))){
+    footer.innerHTML+=`
+      <button class="btn btn-t btn-sm" onclick="generarPDF('${id}')">📄 PDF</button>
+      <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');compartirWA('${id}')">📱 WhatsApp</button>
+      <button class="btn btn-t btn-sm" onclick="closeModal('modal-cot');compartirEmail('${id}')">✉️ Correo</button>
+      <button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirModalEnviar('${id}')">📋 Registrar Respuesta Cliente</button>`;
+  }
+  // FIX-18: PDF disponible en estados finales
+  if((cot.estado==='aceptada'||cot.estado==='rechazada')&&(cot.vendedorId===STATE.user.id||hasRole('admin')||hasRole('jefe'))){
+    footer.innerHTML+=`<button class="btn btn-t btn-sm" onclick="generarPDF('${id}')">📄 PDF</button>`;
+  }
+  openModal('modal-cot');
+}
+
+// ── MATERIALES EN MODAL DE COSTOS ──
+function getCotById(id){return (DB.get('cotizaciones')||[]).find(c=>c.id===id);}
+function saveCotById(cot){const cots=DB.get('cotizaciones')||[];const idx=cots.findIndex(c=>c.id===cot.id);if(idx>=0)cots[idx]=cot;DB.set('cotizaciones',cots);}
+
+function renderMatModal(cotId,iIdx,readOnly){
+  const cot=getCotById(cotId);if(!cot)return;
+  const c=document.getElementById('mmat-'+iIdx);if(!c)return;
+  c.innerHTML='';
+  const mats=cot.items[iIdx].materiales||[];
+  if(!mats.length){
+    c.innerHTML=`<div style="font-size:.78rem;color:var(--n5);padding:4px 0;">Sin materiales registrados</div>`;
+  }else{
+    mats.forEach((m,mi)=>{
+      const row=document.createElement('div');row.className='mat-row';
+      if(readOnly){
+        row.innerHTML=`
+          <div style="padding:6px 8px;border:1px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sanitize(m.nombre||'')}">${sanitize(m.nombre||'—')}</div>
+          <input type="number" readonly value="${m.cantidad||1}" style="padding:6px 8px;border:1px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);">
+          <input type="number" readonly value="${m.costoUnit||0}" style="padding:6px 8px;border:1px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);">
+          <div></div>`;
+      }else{
+        const dropId='mdrop-m-'+iIdx+'-'+mi;
+        row.innerHTML=`<div class="mat-search-wrap">
+            <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;" placeholder="Buscar material..." value="${sanitize(m.nombre||'')}"
+              oninput="buscarMatModal(this,'${dropId}','${cotId}',${iIdx},${mi})"
+              onfocus="document.getElementById('${dropId}').classList.add('open')"
+              onblur="setTimeout(()=>document.getElementById('${dropId}').classList.remove('open'),200)">
+            <div class="mat-dropdown" id="${dropId}"></div></div>
+          <input type="number" min="0" step="0.01" value="${m.cantidad||1}" placeholder="Cant."
+            style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;"
+            onchange="updateMatModal('${cotId}',${iIdx},${mi},'cantidad',parseFloat(this.value)||1)">
+          <input type="number" readonly value="${m.costoUnit||0}"
+            style="padding:7px 8px;border:1.5px solid var(--n3);border-radius:6px;font-size:.82rem;background:var(--n1);" placeholder="C.Unit">
+          <button class="btn-del" style="padding:4px 6px;" onclick="eliminarMatModal('${cotId}',${iIdx},${mi})">✕</button>`;
+      }
+      c.appendChild(row);
+    });
+  }
+  const costEl=document.getElementById('mcost-'+iIdx);
+  if(costEl){const total=mats.reduce((s,m)=>(m.costoUnit||0)*(m.cantidad||1)+s,0);costEl.textContent='$'+fmtNum(total);}
+}
+
+function agregarMatModal(cotId,iIdx){
+  const cot=getCotById(cotId);if(!cot)return;
+  if(!cot.items[iIdx].materiales)cot.items[iIdx].materiales=[];
+  cot.items[iIdx].materiales.push({matIdx:null,nombre:'',cantidad:1,costoUnit:0});
+  saveCotById(cot);renderMatModal(cotId,iIdx);
+}
+
+function eliminarMatModal(cotId,iIdx,mi){
+  const cot=getCotById(cotId);if(!cot)return;
+  cot.items[iIdx].materiales.splice(mi,1);
+  saveCotById(cot);renderMatModal(cotId,iIdx);
+}
+
+function updateMatModal(cotId,iIdx,mi,field,val){
+  const cot=getCotById(cotId);if(!cot)return;
+  cot.items[iIdx].materiales[mi][field]=val;
+  saveCotById(cot);renderMatModal(cotId,iIdx);
+}
+
+function buscarMatModal(inp,dropId,cotId,iIdx,mi){
+  const q=inp.value.toLowerCase();
+  const cotUpd=getCotById(cotId);if(cotUpd){cotUpd.items[iIdx].materiales[mi].nombre=inp.value;saveCotById(cotUpd);}
+  const drop=document.getElementById(dropId);if(!drop)return;
+  const mats=DB.get('materiales')||[];
+  const matches=q.length>1?mats.filter(m=>m.descripcion.toLowerCase().includes(q)||m.codigo.toLowerCase().includes(q)):mats.slice(0,12);
+  drop.innerHTML='';
+  matches.forEach(m=>{
+    const opt=document.createElement('div');opt.className='mat-opt';
+    opt.innerHTML=`<div>${sanitize(m.descripcion)}</div><div class="mat-cod">${sanitize(m.codigo)} · $${fmtNum(m.costoUnitario)}</div>`;
+    opt.onmousedown=()=>{
+      inp.value=m.descripcion;
+      const cot=getCotById(cotId);if(!cot)return;
+      cot.items[iIdx].materiales[mi].nombre=m.descripcion;
+      cot.items[iIdx].materiales[mi].costoUnit=m.costoUnitario;
+      cot.items[iIdx].materiales[mi].matCod=m.codigo;
+      saveCotById(cot);renderMatModal(cotId,iIdx);
+      drop.classList.remove('open');
+    };
+    drop.appendChild(opt);
+  });
+  drop.classList.toggle('open',matches.length>0||q.length>0);
+}
+
+// BUG-04 FIX: nueva función para transición aprobada → enviada
+function marcarComoEnviada(id){
+  if(!confirm('¿Marcar la cotización como enviada al cliente?'))return;
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
+  if(!transicionValida(cots[idx].estado,'enviada')){toast('Transición no válida.');return;}
+  cots[idx].estado='enviada';cots[idx].fechaEnvio=new Date().toISOString();
+  agregarHistorial(cots[idx],'Marcado como enviada al cliente');
+  DB.set('cotizaciones',cots);closeModal('modal-cot');toast('✓ Cotización marcada como enviada');renderMis();
+}
+
+function abrirModalEnviar(id){
+  document.getElementById('env-title').textContent='📤 Registrar Respuesta del Cliente';
+  document.getElementById('env-body').innerHTML=`<div class="fg"><label>Respuesta del Cliente</label>
+    <select id="env-resp"><option value="">-- Seleccionar --</option><option>aceptada</option><option>rechazada</option><option>negociacion</option></select></div>`;
+  document.getElementById('env-footer').innerHTML=`
+    <button class="btn btn-out btn-sm" onclick="closeModal('modal-enviar')">Cancelar</button>
+    <button class="btn btn-ok btn-sm" onclick="registrarRespuesta('${id}')">✓ Registrar</button>`;
+  openModal('modal-enviar');
+}
+function registrarRespuesta(id){
+  const resp=document.getElementById('env-resp')?.value;if(!resp){toast('Selecciona la respuesta');return;}
+  if(!confirm('¿Registrar esta respuesta?'))return;
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(!cots[idx])return;
+  if(!transicionValida(cots[idx].estado,resp)){toast('Transición no válida.');return;}
+  cots[idx].estado=resp;cots[idx].fechaRespuesta=new Date().toISOString();
+  agregarHistorial(cots[idx],'Cliente: '+resp);DB.set('cotizaciones',cots);
+  closeModal('modal-enviar');toast('Respuesta registrada: '+resp);renderMis();
+}
+
+// ── COPIAR COTIZACIÓN ──
+function openCopiarModal(){document.getElementById('cp-folio').value='';document.getElementById('cp-resultado').innerHTML='';openModal('modal-copiar');}
+function buscarParaCopiar(){
+  const q=document.getElementById('cp-folio').value.toLowerCase();const c=document.getElementById('cp-resultado');
+  if(!q){c.innerHTML='';return;}
+  const cots=(DB.get('cotizaciones')||[]).filter(x=>x.folio?.toLowerCase().includes(q)||x.cliente?.toLowerCase().includes(q));
+  if(!cots.length){c.innerHTML='<p style="font-size:.82rem;color:var(--n5);padding:8px;">No se encontraron cotizaciones</p>';return;}
+  c.innerHTML=cots.map(cot=>`<div style="padding:10px;background:var(--n1);border-radius:8px;margin-top:8px;">
+    <div style="font-weight:700;color:var(--p);">${sanitize(cot.folio)}</div>
+    <div style="font-size:.78rem;color:var(--n5);">${sanitize(cot.cliente)} · ${sanitize(cot.proyecto)} · ${fmtFecha(cot.fecha)}</div>
+    <button class="btn btn-t btn-sm" style="margin-top:6px" onclick="copiarCotizacion('${cot.id}')">Copiar datos</button>
+  </div>`).join('');
+}
+// BUG-11 FIX: limpiar imágenes al copiar para no heredar base64 pesado
+function copiarCotizacion(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  STATE.items=JSON.parse(JSON.stringify(cot.items||[])).map(it=>({...it,imagenes:[null,null,null]}));
+  STATE.params=JSON.parse(JSON.stringify(cot.params||[]));STATE.conds=JSON.parse(JSON.stringify(cot.conds||[]));
+  STATE.moneda=cot.moneda||'MXN';STATE.sym=cot.sym||'$';STATE.editId=null;
+  document.getElementById('f-cliente').value=cot.cliente||'';document.getElementById('f-proyecto').value=cot.proyecto||'';
+  document.getElementById('f-atencion').value=cot.atencion||'';document.getElementById('f-solicitante').value=cot.solicitante||'';
+  document.getElementById('f-lider').value=cot.lider||'';document.getElementById('f-notas').value=cot.notas||'';
+  document.getElementById('f-iva').value=cot.iva||16;document.getElementById('f-descuento').value=cot.descuento||0;
+  document.getElementById('f-id').value='';
+  initFecha();renderItems();renderParams();renderConds();closeModal('modal-copiar');toast('✓ Datos copiados de '+cot.folio+' — ajusta y guarda');
+}
+
+// ── EDITAR COTIZACIÓN ──
+function cargarParaEditar(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  if(!(cot.estado==='borrador'||cot.estado==='rechazada')||!(cot.vendedorId===STATE.user.id||hasRole('admin'))){toast('No puedes editar esta cotización en este estado.');return;}
+  STATE.editId=id;STATE.items=JSON.parse(JSON.stringify(cot.items||[]));
+  STATE.params=JSON.parse(JSON.stringify(cot.params||[]));STATE.conds=JSON.parse(JSON.stringify(cot.conds||[]));
+  STATE.moneda=cot.moneda||'MXN';STATE.sym=cot.sym||'$';
+  document.getElementById('f-fecha').value=cot.fecha||'';document.getElementById('f-cliente').value=cot.cliente||'';
+  document.getElementById('f-proyecto').value=cot.proyecto||'';document.getElementById('f-atencion').value=cot.atencion||'';
+  document.getElementById('f-solicitante').value=cot.solicitante||'';document.getElementById('f-lider').value=cot.lider||'';
+  document.getElementById('f-notas').value=cot.notas||'';document.getElementById('f-iva').value=cot.iva||16;
+  document.getElementById('f-descuento').value=cot.descuento||0;document.getElementById('f-id').value=id;
+  renderItems();renderParams();renderConds();activateTab('nueva');iniciarAutoSave();
+}
+
+// ── BACKUP ──
+function descargarBackup(){
+  const backup={usuarios:DB.get('usuarios'),cotizaciones:DB.get('cotizaciones'),materiales:DB.get('materiales'),config:DB.get('config')};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;
+  a.download='tacre_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);toast('📥 Backup descargado');
+}
+// MEJORA-05 FIX: auto-reload tras restaurar backup
+function restaurarBackup(input){
+  const file=input.files[0];if(!file)return;
+  if(!confirm('⚠️ Esto reemplazará TODOS los datos actuales. ¿Continuar?')){input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const backup=JSON.parse(e.target.result);
+      if(backup.usuarios)DB.set('usuarios',backup.usuarios);if(backup.cotizaciones)DB.set('cotizaciones',backup.cotizaciones);
+      if(backup.materiales)DB.set('materiales',backup.materiales);if(backup.config)DB.set('config',backup.config);
+      toast('✓ Backup restaurado. Recargando...');
+      setTimeout(()=>location.reload(),1500);
+    }catch(err){toast('✗ Archivo inválido');}
+  };reader.readAsText(file);
+}
+
+// ── USUARIOS ──
+function renderUsers(){
+  const tbody=document.getElementById('users-body');tbody.innerHTML='';
+  (DB.get('usuarios')||[]).forEach(u=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="font-weight:600;">${sanitize(u.nombre)}</td><td><code>${sanitize(u.user)}</code></td>
+      <td>${u.roles.map(r=>`<span class="r-badge">${r}</span>`).join('')}</td>
+      <td>${u.activo?'<span style="color:#16a34a;font-weight:700;">✓ Activo</span>':'<span style="color:#dc2626;font-weight:700;">✗ Inactivo</span>'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn-del" onclick="editarUsuario(${u.id})">Editar</button>
+        <button class="btn-del" style="${u.activo?'':'background:rgba(34,197,94,.1);color:#15803d;border-color:rgba(34,197,94,.3);'}" onclick="toggleActivoUsuario(${u.id})">${u.activo?'Desactivar':'Activar'}</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+const ALL_ROLES=['admin','vendedor','costos','jefe'];
+function openUserModal(){document.getElementById('mu-id').value='';document.getElementById('mu-nombre').value='';document.getElementById('mu-user').value='';document.getElementById('mu-pass').value='';document.getElementById('mu-title').textContent='Nuevo Usuario';renderRoleChkbx([]);openModal('modal-user');}
+// MEJORA-04: alternar estado activo/inactivo del usuario
+function toggleActivoUsuario(id){
+  const users=DB.get('usuarios');const idx=users.findIndex(u=>u.id===id);if(idx<0)return;
+  if(users[idx].user===STATE.user.user){toast('⚠️ No puedes desactivar tu propia cuenta');return;}
+  users[idx].activo=!users[idx].activo;
+  DB.set('usuarios',users);renderUsers();toast(users[idx].activo?'✓ Usuario activado':'Usuario desactivado');
+}
+function editarUsuario(id){const u=(DB.get('usuarios')||[]).find(x=>x.id===id);if(!u)return;document.getElementById('mu-id').value=id;document.getElementById('mu-nombre').value=u.nombre;document.getElementById('mu-user').value=u.user;document.getElementById('mu-pass').value='';document.getElementById('mu-title').textContent='Editar Usuario';renderRoleChkbx(u.roles);openModal('modal-user');}
+function renderRoleChkbx(sel){const c=document.getElementById('mu-roles');c.innerHTML=ALL_ROLES.map(r=>`<label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer;background:var(--n1);padding:5px 10px;border-radius:12px;"><input type="checkbox" value="${r}" ${sel.includes(r)?'checked':''}> ${r}</label>`).join('');}
+// BUG-07 + BUG-08 FIX: validación de contraseña y no propagar pass vacío al objeto
+async function guardarUsuario(){
+  const id=document.getElementById('mu-id').value;
+  const roles=[...document.querySelectorAll('#mu-roles input:checked')].map(i=>i.value);
+  if(!roles.length){toast('Selecciona al menos un rol');return;}
+  const nombre=document.getElementById('mu-nombre').value.trim();
+  const user=document.getElementById('mu-user').value.trim();
+  const pass=document.getElementById('mu-pass').value;
+  if(!nombre||!user){toast('⚠️ Nombre y usuario son requeridos');return;}
+  const users=DB.get('usuarios');
+  if(id){
+    const idx=users.findIndex(u=>u.id==id);
+    const updates={nombre,user,roles,activo:users[idx].activo??true};
+    if(pass)updates.hash=await hashPassword(pass); // solo actualiza hash si se ingresó nueva clave
+    users[idx]={...users[idx],...updates};
+  }else{
+    if(!pass){toast('⚠️ La contraseña es requerida para nuevos usuarios');return;}
+    users.push({id:Date.now(),nombre,user,roles,activo:true,hash:await hashPassword(pass)});
+  }
+  DB.set('usuarios',users);closeModal('modal-user');renderUsers();toast('Usuario guardado');
+}
+
+// ── CATÁLOGO ──
+// BUG-03 FIX: usa idx (índice real en array completo) en lugar de i (índice filtrado)
+function renderCatalogo(){
+  const q=(document.getElementById('cat-search')?.value||'').toLowerCase();
+  const allMats=DB.get('materiales')||[];
+  const mats=allMats.filter(m=>!q||m.descripcion?.toLowerCase().includes(q)||m.codigo?.toLowerCase().includes(q)||m.categoria?.toLowerCase().includes(q));
+  const tbody=document.getElementById('cat-body');tbody.innerHTML='';
+  mats.forEach(m=>{
+    const idx=allMats.indexOf(m); // índice real en el array completo
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><code>${sanitize(m.codigo)}</code></td><td>${sanitize(m.descripcion)}</td>
+      <td><span class="chip">${sanitize(m.categoria)}</span></td>
+      <td style="font-weight:700;">$${fmtNum(m.costoUnitario)}</td>
+      <td style="font-size:.78rem;">${sanitize(m.proveedor)}</td>
+      <td><button class="btn-del" onclick="editarMaterial(${idx})">Editar</button></td>`;
+    tbody.appendChild(tr);
+  });
+  if(!mats.length)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--n5);padding:20px;">Sin materiales</td></tr>';
+}
+function openMatModal(){document.getElementById('mm-idx').value='';['mm-cod','mm-cat','mm-desc','mm-costo','mm-prov'].forEach(id=>document.getElementById(id).value='');document.getElementById('mm-title').textContent='Agregar Material';openModal('modal-mat');}
+function openMatModalFromItem(nombre,itmIdx,matIdx){
+  document.getElementById('mm-idx').value=JSON.stringify({itmIdx,matIdx});
+  document.getElementById('mm-cod').value='MAT'+String(Date.now()).slice(-4);
+  document.getElementById('mm-desc').value=nombre;document.getElementById('mm-cat').value='';document.getElementById('mm-costo').value='';document.getElementById('mm-prov').value='';
+  document.getElementById('mm-title').textContent='Crear nuevo material';openModal('modal-mat');
+}
+function editarMaterial(i){const m=(DB.get('materiales')||[])[i];if(!m)return;document.getElementById('mm-idx').value=i;document.getElementById('mm-cod').value=m.codigo;document.getElementById('mm-cat').value=m.categoria;document.getElementById('mm-desc').value=m.descripcion;document.getElementById('mm-costo').value=m.costoUnitario;document.getElementById('mm-prov').value=m.proveedor;document.getElementById('mm-title').textContent='Editar Material';openModal('modal-mat');}
+function guardarMaterial(){
+  const mat={codigo:document.getElementById('mm-cod').value,descripcion:document.getElementById('mm-desc').value,categoria:document.getElementById('mm-cat').value,costoUnitario:parseFloat(document.getElementById('mm-costo').value)||0,proveedor:document.getElementById('mm-prov').value,stock:0};
+  if(!mat.descripcion){toast('Ingresa la descripción');return;}
+  const mats=DB.get('materiales')||[];const idxRaw=document.getElementById('mm-idx').value;let itemRef=null;
+  try{itemRef=JSON.parse(idxRaw);}catch(e){}
+  if(itemRef&&typeof itemRef==='object'){
+    mats.push(mat);DB.set('materiales',mats);
+    STATE.items[itemRef.itmIdx].materiales[itemRef.matIdx].nombre=mat.descripcion;
+    STATE.items[itemRef.itmIdx].materiales[itemRef.matIdx].costoUnit=mat.costoUnitario;
+    STATE.items[itemRef.itmIdx].materiales[itemRef.matIdx].matCod=mat.codigo;
+    renderMateriales(itemRef.itmIdx);closeModal('modal-mat');toast('✓ Material creado y asociado al ítem');
+  }else if(idxRaw!==''&&!isNaN(parseInt(idxRaw))){
+    mats[parseInt(idxRaw)]={...mats[parseInt(idxRaw)],...mat};DB.set('materiales',mats);renderCatalogo();closeModal('modal-mat');toast('Material actualizado');
+  }else{
+    mats.push(mat);DB.set('materiales',mats);renderCatalogo();closeModal('modal-mat');toast('✓ Material agregado al catálogo');
+  }
+}
+
+// ── AUDITORÍA ──
+function renderAuditoria(){
+  const q=(document.getElementById('aud-search')?.value||'').toLowerCase();
+  const cots=(DB.get('cotizaciones')||[]).filter(c=>!q||c.folio?.toLowerCase().includes(q)||c.cliente?.toLowerCase().includes(q)||c.estado?.toLowerCase().includes(q)).sort((a,b)=>b.fechaCreacion?.localeCompare(a.fechaCreacion||'')||0);
+  const tbody=document.getElementById('aud-body');tbody.innerHTML='';
+  cots.forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="font-weight:700;color:var(--p);">${sanitize(c.folio)}</td><td>${sanitize(c.cliente)}</td><td>${sanitize(c.proyecto)}</td><td>${sanitize(c.vendedorNombre)}</td>
+      <td>${badgeHtml(c.estado)}</td><td>${fmtFecha(c.fecha)}</td><td style="font-weight:700;">${c.moneda} ${fmtNum(c.precioFinal||c.total)}</td>`;
+    tbody.appendChild(tr);
+  });
+  if(!cots.length)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--n5);padding:20px;">Sin registros</td></tr>';
+}
+
+// ── IMPORTAR EXCEL ──
+function openImportExcel(){document.getElementById('excel-file').value='';document.getElementById('excel-preview').style.display='none';document.getElementById('btn-import-confirm').style.display='none';STATE._excelData=null;openModal('modal-excel');}
+document.addEventListener('DOMContentLoaded',()=>{
+  const fi=document.getElementById('excel-file');
+  if(fi)fi.onchange=function(e){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>{
+      const wb=XLSX.read(ev.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const data=XLSX.utils.sheet_to_json(ws);
+      if(!data.length){toast('El archivo está vacío');return;}
+      STATE._excelData=data.map(row=>({codigo:String(row['Código']||row['codigo']||''),descripcion:String(row['Descripción']||row['descripcion']||''),costoUnitario:parseFloat(row['Costo Unitario']||row['costoUnitario']||0)||0,proveedor:String(row['Proveedor']||row['proveedor']||''),categoria:String(row['Categoría']||row['categoria']||''),stock:parseInt(row['Stock']||0)||0}));
+      const prev=document.getElementById('excel-preview');prev.style.display='block';
+      prev.innerHTML=`<div style="background:var(--tl);border-radius:8px;padding:10px;font-size:.82rem;">✓ ${STATE._excelData.length} materiales detectados · Primeros 3: ${STATE._excelData.slice(0,3).map(m=>sanitize(m.descripcion)).join(', ')}</div>`;
+      document.getElementById('btn-import-confirm').style.display='inline-block';
+    };r.readAsArrayBuffer(f);
+  };
+});
+function confirmarImportExcel(){
+  if(!STATE._excelData?.length){toast('Sin datos para importar');return;}
+  if(!confirm('¿Reemplazar todo el catálogo actual?'))return;
+  DB.set('materiales',STATE._excelData);closeModal('modal-excel');
+  toast('✓ Catálogo importado: '+STATE._excelData.length+' materiales');
+  if(document.getElementById('panel-catalogo').classList.contains('active'))renderCatalogo();
+}
+
+// ── PDF ──
+// FIX-19: logo corporativo real en cabecera del PDF (caja blanca redondeada)
+function generarPDF(id,returnBlob){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot){toast('Cotización no encontrada');return;}
+  const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','a4');
+  const pageW=doc.internal.pageSize.getWidth();const pageH=doc.internal.pageSize.getHeight();const margin=14;
+  doc.setFillColor(90,45,130);doc.rect(0,0,pageW,32,'F');
+  let textX=margin;
+  try{
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(margin,4.5,23,23,2.5,2.5,'F');
+    doc.addImage(LOGO_B64,'PNG',margin+2,6.5,19,19);
+    textX=margin+27;
+  }catch(e){}
+  doc.setTextColor(255,255,255);doc.setFont('Helvetica','bold');doc.setFontSize(22);doc.text('TACRE',textX,16);
+  doc.setFontSize(8);doc.setFont('Helvetica','normal');doc.text('Creatividad & Diseño',textX,22);
+  doc.setFontSize(14);doc.setFont('Helvetica','bold');doc.text('COTIZACION',pageW-margin,14,{align:'right'});
+  doc.setFontSize(10);doc.setFont('Helvetica','normal');doc.text(cot.folio,pageW-margin,21,{align:'right'});doc.text('Fecha: '+fmtFecha(cot.fecha),pageW-margin,27,{align:'right'});
+  let y=42;
+  doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(9);doc.text('INFORMACION GENERAL',margin,y);y+=5;
+  doc.setDrawColor(0,168,168);doc.setLineWidth(0.4);doc.line(margin,y,pageW-margin,y);y+=5;
+  const info=[['Cliente',cot.cliente],['Proyecto',cot.proyecto],['Atencion',cot.atencion],['Solicitante',cot.solicitante],['Lider',cot.lider]].filter(r=>r[1]);
+  doc.setFont('Helvetica','normal');doc.setTextColor(55,65,81);doc.setFontSize(8.5);
+  info.forEach(([k,v])=>{doc.setFont('Helvetica','bold');doc.text(k+': ',margin,y);doc.setFont('Helvetica','normal');doc.text(v||'',margin+22,y);y+=5;});
+  y+=4;doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(9);doc.text('ITEMS DE COTIZACION',margin,y);y+=5;
+  doc.setDrawColor(0,168,168);doc.line(margin,y,pageW-margin,y);y+=3;
+  const rows=(cot.items||[]).map((it,i)=>[i+1,it.desc||'',it.cantidad+' '+it.unidad,(cot.sym||'$')+fmtNum(it.precioUnit),(cot.sym||'$')+fmtNum((it.precioUnit||0)*(it.cantidad||1))]);
+  doc.autoTable({head:[['#','Descripcion','Cantidad','P.Unitario','Total']],body:rows,startY:y,headStyles:{fillColor:[90,45,130],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[55,65,81]},alternateRowStyles:{fillColor:[245,240,252]},columnStyles:{0:{cellWidth:8,halign:'center'},2:{cellWidth:22,halign:'center'},3:{cellWidth:28,halign:'right'},4:{cellWidth:28,halign:'right'}},margin:{left:margin,right:margin},didDrawPage:d=>{y=d.cursor.y;}});
+  y=doc.autoTable.previous.finalY+8;
+  if(cot.params?.length){
+    if(y>pageH-60){doc.addPage();y=20;}
+    doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(9);doc.text('PARAMETROS TECNICOS',margin,y);y+=5;
+    doc.setDrawColor(0,168,168);doc.line(margin,y,pageW-margin,y);y+=3;
+    doc.autoTable({body:cot.params.map(p=>[p.clave,p.valor]),startY:y,bodyStyles:{fontSize:8,textColor:[55,65,81]},alternateRowStyles:{fillColor:[232,249,249]},columnStyles:{0:{fontStyle:'bold',cellWidth:50}},margin:{left:margin,right:margin}});
+    y=doc.autoTable.previous.finalY+8;
+  }
+  if(y>pageH-50){doc.addPage();y=20;}
+  const sym=cot.sym||'$';
+  const totalData=[['Subtotal',sym+fmtNum(cot.subtotal)]];
+  if(cot.descuento>0)totalData.push(['Descuento ('+cot.descuento+'%)','- '+sym+fmtNum(cot.subtotal*(cot.descuento/100))]);
+  totalData.push(['IVA ('+cot.iva+'%)',sym+fmtNum((cot.subtotal*(1-(cot.descuento||0)/100))*(cot.iva/100))]);
+  if(cot.precioFinal)totalData.push(['PRECIO FINAL APROBADO',(cot.monedaFinal||cot.moneda)+' '+fmtNum(cot.precioFinal)]);
+  else totalData.push(['TOTAL',sym+fmtNum(cot.total)]);
+  doc.autoTable({body:totalData,startY:y,bodyStyles:{fontSize:9},columnStyles:{0:{fontStyle:'bold',cellWidth:50},1:{halign:'right',fontStyle:'bold',textColor:[90,45,130]}},willDrawCell:d=>{if(d.row.index===totalData.length-1){doc.setFillColor(90,45,130);doc.setTextColor(255,255,255);}},margin:{left:pageW-margin-80,right:margin}});
+  y=doc.autoTable.previous.finalY+8;
+  if(cot.conds?.length){
+    if(y>pageH-50){doc.addPage();y=20;}
+    doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(9);doc.text('CONDICIONES DE OFERTA',margin,y);y+=5;
+    doc.setDrawColor(0,168,168);doc.line(margin,y,pageW-margin,y);y+=3;
+    doc.setFont('Helvetica','normal');doc.setTextColor(55,65,81);doc.setFontSize(8);
+    cot.conds.forEach((cd,i)=>{const lines=doc.splitTextToSize((i+1)+'. '+cd.texto,pageW-margin*2);doc.text(lines,margin,y);y+=lines.length*4+2;});
+  }
+  (cot.items||[]).forEach((it,idx)=>{
+    const imgs=(it.imagenes||[]).filter(Boolean);if(!imgs.length)return;
+    if(y>pageH-70){doc.addPage();y=20;}
+    doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(8.5);
+    doc.text('REFERENCIAS VISUALES - Item '+(idx+1)+': '+(it.desc||'').substring(0,50),margin,y);y+=4;
+    let ix=margin;imgs.forEach(img=>{try{doc.addImage(img,'JPEG',ix,y,40,40);ix+=44;}catch(e){}});y+=46;
+  });
+  if(cot.notas){if(y>pageH-30){doc.addPage();y=20;}doc.setTextColor(55,65,81);doc.setFont('Helvetica','italic');doc.setFontSize(8);const lines=doc.splitTextToSize('Notas: '+cot.notas,pageW-margin*2);doc.text(lines,margin,y);}
+  const total=doc.internal.getNumberOfPages();
+  const socialIcons=[
+    {label:'Web',      r:90, g:45,  b:130, url:'https://www.tallercreativo.com.mx'},
+    {label:'Facebook', r:24, g:119, b:242, url:'https://www.facebook.com/en.tallercreativo/?ref=page_internal'},
+    {label:'Instagram',r:225,g:48,  b:108, url:'https://www.instagram.com/en_tallercreativo?igsh=MWljMm93a3R3ZDBqaw=='},
+    {label:'LinkedIn', r:10, g:102, b:194, url:'https://www.linkedin.com/company/decreativos/?originalSubdomain=mx'},
+  ];
+  const iconW=18,iconH=5.5,iconGap=3;
+  const totalIconsW=socialIcons.length*(iconW+iconGap)-iconGap;
+  for(let p=1;p<=total;p++){
+    doc.setPage(p);
+    const fy=pageH-8;
+    doc.setDrawColor(0,168,168);doc.setLineWidth(0.4);doc.line(margin,fy-18,pageW-margin,fy-18);
+    doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
+    doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
+    doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.5',margin,fy-13);
+    let ix=(pageW-totalIconsW)/2;
+    socialIcons.forEach(ic=>{
+      doc.setFillColor(ic.r,ic.g,ic.b);
+      doc.roundedRect(ix,fy-10,iconW,iconH,1.4,1.4,'F');
+      doc.setTextColor(255,255,255);doc.setFont('Helvetica','bold');doc.setFontSize(6);
+      doc.text(ic.label,ix+iconW/2,fy-6.6,{align:'center'});
+      doc.link(ix,fy-10,iconW,iconH,{url:ic.url});
+      ix+=iconW+iconGap;
+    });
+  }
+  const cli=(cot.cliente||'cotizacion').replace(/\s+/g,'_');const fd=new Date().toISOString().split('T')[0];const filename=`TACRE_${cli}_${fd}.pdf`;
+  if(returnBlob)return{blob:doc.output('blob'),filename};
+  doc.save(filename);
+}
+
+// ── WHATSAPP / EMAIL ──
+function buildMsgCot(cot){
+  const sep='━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  const atencion=cot.vendedorNombre||STATE.user?.nombre||'';
+  const itemsResumen=(cot.items||[]).map((it,i)=>{
+    const desc=(it.desc||'').length>120?(it.desc||'').substring(0,120)+'...':it.desc||'';
+    return `📌 ÍTEM ${i+1}\n${desc}`;
+  }).join('\n');
+  return `🌐 https://www.tallercreativo.com.mx\n\n`+
+    `Hola, saludos cordiales.\n`+
+    `🏢 TACRE - Creatividad & Diseño\n`+
+    `✨ COTIZACIÓN PARA PROYECTO ✨\n\n`+
+    `📋 PROYECTO: ${cot.proyecto||''}\n`+
+    `👤 CLIENTE: ${cot.cliente||''}\n`+
+    `👔 ATENCIÓN: ${atencion}\n`+
+    `${sep}\n`+
+    `📎 PDF adjunto\n\n`+
+    `📄 Resumen del documento:\n`+
+    `Hemos preparado una cotización detallada para el proyecto ${cot.proyecto||''} que incluye:\n`+
+    `${itemsResumen}\n\n`+
+    `✅ Invitamos a revisar los detalles técnicos y comerciales.\n`+
+    `✅ Quedamos atentos a su aprobación para proceder con la orden de compra.\n`+
+    `${sep}\n`+
+    `📞 Para cualquier consulta, no dude en contactarnos.\n\n`+
+    `✨ TACRE - Donde las ideas cobran vida`;
+}
+
+// FIX-20: usa copyText (con fallback execCommand) y reporta el resultado real
+async function compartirWA(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  const msg=buildMsgCot(cot);
+  const pdfData=generarPDF(id,true);
+  const copiado=await copyText(msg);
+  if(pdfData){
+    const file=new File([pdfData.blob],pdfData.filename,{type:'application/pdf'});
+    if(navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:'Cotización TACRE',text:msg});return;}catch(e){}}
+    const url=URL.createObjectURL(pdfData.blob);const a=document.createElement('a');a.href=url;a.download=pdfData.filename;a.click();URL.revokeObjectURL(url);
+    setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'),700);
+    toast('📄 PDF descargado'+(copiado?' · 📋 Texto copiado':''));
+  }else{
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+    toast(copiado?'📋 Texto copiado al portapapeles':'Abriendo WhatsApp...');
+  }
+}
+
+async function compartirEmail(id){
+  const cot=(DB.get('cotizaciones')||[]).find(c=>c.id===id);if(!cot)return;
+  const msg=buildMsgCot(cot);
+  const asunto=encodeURIComponent(`Cotización ${cot.folio||''} – ${cot.proyecto||''} | TACRE`);
+  const cuerpo=encodeURIComponent(msg);
+  const pdfData=generarPDF(id,true);
+  const copiado=await copyText(msg);
+  if(pdfData){
+    const url=URL.createObjectURL(pdfData.blob);const a=document.createElement('a');a.href=url;a.download=pdfData.filename;a.click();URL.revokeObjectURL(url);
+    setTimeout(()=>window.location.href=`mailto:?subject=${asunto}&body=${cuerpo}`,700);
+    toast('📄 PDF descargado'+(copiado?' · 📋 Texto copiado':'')+' · ✉️ Abriendo correo...');
+  }else{
+    window.location.href=`mailto:?subject=${asunto}&body=${cuerpo}`;
+    toast('✉️ Abriendo cliente de correo...');
+  }
+}
+
+// ── HELPERS ──
+// MEJ-20: apertura/cierre animados (el cierre espera la animación .closing antes de ocultar)
+function openModal(id){const m=document.getElementById(id);if(!m)return;m.classList.remove('closing');m.classList.add('open');}
+function closeModal(id){const m=document.getElementById(id);if(!m||!m.classList.contains('open')||m.classList.contains('closing'))return;m.classList.add('closing');setTimeout(()=>m.classList.remove('open','closing'),210);}
+// FIX: check e.target===m so native select dropdowns don't trigger backdrop close
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id);}));
+let _toastTimer;
+// MEJ-20: toast animado por clase .show (desliza + fade, ver CSS)
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='';t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3500);}
+function badgeHtml(e){
+  const m={'borrador':'badge-borrador Borrador','pendiente_costos':'badge-p-costos ⏳ Pendiente Costos','rechazada':'badge-rechazada ✗ Rechazada','pendiente_jefe':'badge-p-jefe 🔵 Pendiente Jefe','aprobada':'badge-aprobada ✓ Aprobada','enviada':'badge-enviada 📤 Enviada','aceptada':'badge-aceptada 🤝 Aceptada','negociacion':'badge-negociacion 💬 Negociación'};
+  const val=m[e]||'badge-borrador '+e;const parts=val.split(' ');const cls=parts.shift();
+  return `<span class="badge ${cls}">${parts.join(' ')}</span>`;
+}
+function fmtNum(n){return(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtFecha(d){if(!d)return '';try{const[y,m,dd]=d.split('-');return dd+'/'+m+'/'+y;}catch(e){return d;}}
+
+// ── INIT ──
+// FIX-19: inyectar logo corporativo en login y navbar al cargar
+window.addEventListener('DOMContentLoaded',async()=>{
+  document.querySelectorAll('#logo-login,#logo-nav').forEach(im=>im.src=LOGO_B64);
+  // MEJ-24: PWA — el SW solo existe bajo http/https; en file:// la app sigue igual que siempre
+  if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{/* sin PWA, la app funciona normal */});
+  }
+  // MEJ-23: teclado decimal en iPhone/Android para todo input numérico (incluye los creados dinámicamente)
+  const setDec=r=>{if(r.querySelectorAll)r.querySelectorAll('input[type=number]').forEach(i=>i.setAttribute('inputmode','decimal'));};
+  setDec(document);
+  new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{
+    if(n.nodeType!==1)return;
+    if(n.matches&&n.matches('input[type=number]'))n.setAttribute('inputmode','decimal');
+    setDec(n);
+  }))).observe(document.body,{childList:true,subtree:true});
+  await DB.init();
+});
+</script>
+</body>
+</html>
