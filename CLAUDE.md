@@ -54,7 +54,15 @@ Hay Respaldo/Restauración a JSON en la pestaña de admin.
 - Todo dato de usuario pasa por `sanitize()` antes de ir a `innerHTML` (anti-XSS).
 - Versionado explícito: v5.2 → v5.3 → ... El título y el pie del PDF llevan la versión.
 
-## Estado actual: v5.5 (PWA instalable)
+## Estado actual: v5.6 (datos demo)
+Nuevo en v5.6 (MEJ-25): 8 cotizaciones de demostración (una por estado del flujo) con
+folios `DEMO-xxxx` que NO consumen el contador real. Botones cargar/borrar en Respaldo BD
+(admin). `_demoCots()` genera fechas relativas a hoy y calcula subtotal/total/precioFinal
+coherentes con las reglas de cálculo. Publicada en https://stefcalvoe.github.io/tacre/
+(repo público stefcalvoe/tacre; actualizar = push a `main` Y `gh-pages`, y subir la
+versión del CACHE en sw.js para que las PWA instaladas refresquen).
+
+## Historial v5.5 (PWA instalable)
 Nuevo en v5.5 (MEJ-24): PWA — `manifest.webmanifest` + `sw.js` (stale-while-revalidate,
 offline tras 1ª carga, incluye CDNs) + `icon-192/512/180.png` (generados del logo, fondo
 blanco, margen maskable) + metas iOS standalone. El SW solo se registra bajo http/https;

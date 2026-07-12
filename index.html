@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.5 — Sistema de Cotizaciones</title>
+<title>TACRE v5.6 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -209,7 +209,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.5</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.6</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -372,6 +372,15 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
         <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restaurarBackup(this)">
       </div>
     </div>
+    <!-- MEJ-25: datos de demostración -->
+    <div class="s-card">
+      <div class="s-head">🎭 Datos de Demostración</div>
+      <p style="margin-bottom:12px;color:var(--n5);font-size:.85rem;">Carga 8 cotizaciones de ejemplo (folios <strong>DEMO-</strong>) que recorren todas las etapas del flujo: borrador, revisión de costos, aprobación del jefe, aprobada, enviada, aceptada, rechazada y negociación. No consumen folios reales y se eliminan sin afectar tus cotizaciones.</p>
+      <div class="btn-row">
+        <button class="btn btn-t" onclick="cargarDemos()">🎭 Cargar cotizaciones demo</button>
+        <button class="btn btn-ng" onclick="borrarDemos()">🧹 Borrar demos</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -480,7 +489,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.5 — PWA INSTALABLE
+// TACRE v5.6 — DATOS DEMO
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -491,6 +500,8 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 //       MEJ-23 teclado decimal móvil · safe-areas iPhone · dvh/svh Safari
 // v5.5: MEJ-24 PWA instalable (manifest + sw.js + iconos + standalone iOS/Android,
 //       offline tras 1ª carga; requiere http/https — en file:// funciona igual que antes)
+// v5.6: MEJ-25 cotizaciones demo (8 etapas del flujo, folios DEMO-xxxx, botones en
+//       Respaldo BD para cargar/borrar sin afectar datos ni folios reales)
 // ═══════════════════════════════════════════════
 
 // ── CRYPTO ──
@@ -590,6 +601,118 @@ const TABS_CONFIG=[
   {id:'users',   label:'👥 Usuarios',          roles:['admin']},
   {id:'backup',  label:'💾 Respaldo BD',       roles:['admin']},
 ];
+
+// ── MEJ-25: COTIZACIONES DEMO (folios DEMO-xxxx, no consumen el contador real) ──
+function _demoCots(){
+  const M=(cod,nombre,cant,costo)=>({matIdx:null,matCod:cod,nombre,cantidad:cant,costoUnit:costo});
+  const IT=(desc,unidad,cant,mats,op)=>{op=op||{};
+    const pu=mats.reduce((s,m)=>s+m.costoUnit*m.cantidad,0);
+    return{id:generateUUID(),desc,unidad,cantidad:cant,precioUnit:pu,materiales:mats,incluye_inst:!!op.inst,incluye_flete:!!op.flete,imagenes:[null,null,null]};
+  };
+  const iso=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString();};
+  const ymd=n=>iso(n).slice(0,10);
+  const H=(n,usuario,cambio)=>({fecha:iso(n),usuario,cambio});
+  const base=o=>{
+    const subtotal=o.items.reduce((s,it)=>s+(it.precioUnit||0)*(it.cantidad||1),0);
+    return Object.assign({id:generateUUID(),atencion:'',solicitante:'',lider:'',notas:'',iva:16,descuento:0,
+      moneda:'MXN',sym:'$',params:[],conds:[],vendedorId:2,vendedorNombre:'Ana Vendedora',
+      subtotal,total:+(subtotal*1.16).toFixed(2)},o);
+  };
+  const list=[
+    base({folio:'DEMO-0001',estado:'borrador',fecha:ymd(1),fechaCreacion:iso(1),
+      cliente:'Cafetería La Norteña',proyecto:'Mostrador de recepción',atencion:'Lic. Sofía Herrera',
+      notas:'Cliente quiere ver muestra física del laminado antes de confirmar.',
+      items:[IT('Mostrador de recepción 2.4 m en MDF 18 mm con laminado negro mate','pza',1,
+        [M('MAT0001','MDF NATURAL 18 MM',4,425),M('MAT0003','LAMINADO PLASTICO NEGRO MATE',3,330),
+         M('MAT0007','PIJAS 8 * 1 1/2"',100,0.35),M('MAT0006','LTO. RESISTOL 850',2,85)],{inst:true})],
+      historial:[H(1,'Ana Vendedora','Creación de borrador')]}),
+    base({folio:'DEMO-0002',estado:'pendiente_costos',fecha:ymd(3),fechaCreacion:iso(3),
+      cliente:'Grupo Farmavida',proyecto:'Stand Expo Farma 2026',atencion:'Ing. Raúl Domínguez',solicitante:'Farmavida S.A. de C.V.',lider:'Ana Vendedora',
+      params:[{clave:'Dimensiones stand',valor:'3 × 3 × 2.4 m'},{clave:'Montaje',valor:'Centro Citibanamex, 14/08'}],
+      conds:[{texto:'50% de anticipo y 50% contra entrega. Vigencia de la oferta: 15 días.'}],
+      items:[
+        IT('Stand 3×3 m con mostrador, trasfondo iluminado y logotipo en acrílico','pza',1,
+          [M('MAT0001','MDF NATURAL 18 MM',8,425),M('MAT0018','ROLLOS DE LED 2835 BLANCO',4,350),
+           M('MAT0027','FUENTES DE 12 V',2,586.8),M('MAT0017','ACRILICO Z2 3MM',2,1185),M('MAT0016','CNC',120,10)],{inst:true,flete:true}),
+        IT('Banco alto barnizado para mostrador','pza',4,
+          [M('MAT0001','MDF NATURAL 18 MM',1,425),M('MAT0011','LTOS. THINNER',2,35),M('MAT0014','LIJA ORBITAL 180',6,10.5)])],
+      historial:[H(3,'Ana Vendedora','Creación de borrador'),H(2,'Ana Vendedora','Enviado a revisión de costos')]}),
+    base({folio:'DEMO-0003',estado:'pendiente_jefe',fecha:ymd(5),fechaCreacion:iso(5),fechaCostos:iso(2),
+      cliente:'Editorial Lumbre',proyecto:'Letrero LED fachada',atencion:'Arq. Marcela Ruiz',
+      items:[IT('Letrero luminoso corpóreo 3 m con neón flex y acrílico','pza',1,
+        [M('MAT0017','ACRILICO Z2 3MM',3,1185),M('MAT0019','ROLLOS DE NEON FLEX BLANCO',2,180),
+         M('MAT0027','FUENTES DE 12 V',1,586.8),M('MAT0022','MTS. CABLE DE USO RUDO',15,37),M('MAT0016','CNC',90,10)],{inst:true})],
+      historial:[H(5,'Ana Vendedora','Creación de borrador'),H(4,'Ana Vendedora','Enviado a revisión de costos'),H(2,'Carlos Costos','Aprobado por costos')]}),
+    base({folio:'DEMO-0004',estado:'aprobada',fecha:ymd(8),fechaCreacion:iso(8),fechaCostos:iso(6),fechaAprobacion:iso(4),
+      cliente:'Constructora Vela',proyecto:'Mobiliario oficinas piso 4',atencion:'Lic. Jorge Peña',lider:'Ana Vendedora',
+      notasJefe:'Aprobada con margen 30%. Confirmar fecha de instalación con obra.',
+      items:[
+        IT('Estación de trabajo en L 1.6 × 1.4 m con cajonera','pza',6,
+          [M('MAT0001','MDF NATURAL 18 MM',3,425),M('MAT0003','LAMINADO PLASTICO NEGRO MATE',2,330),
+           M('MAT0010','JGOS. CORREDERA 55 CMS CIERRE SUAVE',2,60),M('MAT0007','PIJAS 8 * 1 1/2"',80,0.35)],{inst:true}),
+        IT('Credenza archivadora 1.2 m','pza',3,
+          [M('MAT0001','MDF NATURAL 18 MM',2,425),M('MAT0010','JGOS. CORREDERA 55 CMS CIERRE SUAVE',4,60),M('MAT0003','LAMINADO PLASTICO NEGRO MATE',2,330)])],
+      historial:[H(8,'Ana Vendedora','Creación de borrador'),H(7,'Ana Vendedora','Enviado a revisión de costos'),H(6,'Carlos Costos','Aprobado por costos'),H(4,'Juan Jefe','Aprobado por jefe')]}),
+    base({folio:'DEMO-0005',estado:'enviada',fecha:ymd(12),fechaCreacion:iso(12),fechaCostos:iso(10),fechaAprobacion:iso(8),fechaEnvio:iso(6),
+      cliente:'Distribuidora Rontal',proyecto:'Exhibidores punto de venta',atencion:'C.P. Laura Mireles',
+      notasJefe:'Enviada al cliente por WhatsApp y correo el mismo día.',
+      items:[IT('Exhibidor de piso con copete iluminado LED','pza',8,
+        [M('MAT0001','MDF NATURAL 18 MM',2,425),M('MAT0018','ROLLOS DE LED 2835 BLANCO',1,350),
+         M('MAT0017','ACRILICO Z2 3MM',1,1185),M('MAT0016','CNC',40,10),M('MAT0007','PIJAS 8 * 1 1/2"',60,0.35)],{flete:true})],
+      historial:[H(12,'Ana Vendedora','Creación de borrador'),H(11,'Ana Vendedora','Enviado a revisión de costos'),H(10,'Carlos Costos','Aprobado por costos'),H(8,'Juan Jefe','Aprobado por jefe'),H(6,'Ana Vendedora','Enviada al cliente')]}),
+    base({folio:'DEMO-0006',estado:'aceptada',fecha:ymd(20),fechaCreacion:iso(20),fechaCostos:iso(18),fechaAprobacion:iso(15),fechaEnvio:iso(14),
+      cliente:'Corporativo Áurea',proyecto:'Recepción y sala de juntas',atencion:'Dir. Patricia Solís',lider:'Ana Vendedora',
+      notasJefe:'Cliente aceptó sin cambios. Programar producción.',
+      items:[
+        IT('Recepción curva 3 m con logotipo retroiluminado','pza',1,
+          [M('MAT0001','MDF NATURAL 18 MM',6,425),M('MAT0004','LAMINADO RALPH WILSON 1925-07 MARMOL BLANCO',3,1239),
+           M('MAT0018','ROLLOS DE LED 2835 BLANCO',2,350),M('MAT0027','FUENTES DE 12 V',1,586.8),M('MAT0016','CNC',60,10)],{inst:true,flete:true}),
+        IT('Mesa de juntas 2.4 m para 8 personas','pza',1,
+          [M('MAT0001','MDF NATURAL 18 MM',4,425),M('MAT0004','LAMINADO RALPH WILSON 1925-07 MARMOL BLANCO',2,1239),M('MAT0006','LTO. RESISTOL 850',3,85)])],
+      historial:[H(20,'Ana Vendedora','Creación de borrador'),H(18,'Carlos Costos','Aprobado por costos'),H(15,'Juan Jefe','Aprobado por jefe'),H(14,'Ana Vendedora','Enviada al cliente'),H(9,'Ana Vendedora','Cliente aceptó la propuesta 🤝')]}),
+    base({folio:'DEMO-0007',estado:'rechazada',fecha:ymd(4),fechaCreacion:iso(4),
+      cliente:'Industrias FQ',proyecto:'Mesas de trabajo producción',atencion:'Ing. Héctor Baraja',
+      comentarioCostos:'Faltan herrajes de fijación en el ítem 1 y el costo del laminado está desactualizado. Revisar y reenviar.',
+      items:[IT('Mesa de trabajo reforzada 2 × 1 m','pza',5,
+        [M('MAT0001','MDF NATURAL 18 MM',3,425),M('MAT0003','LAMINADO PLASTICO NEGRO MATE',2,330)])],
+      historial:[H(4,'Ana Vendedora','Creación de borrador'),H(3,'Ana Vendedora','Enviado a revisión de costos'),H(2,'Carlos Costos','Rechazado: faltan herrajes de fijación y costo de laminado desactualizado')]}),
+    base({folio:'DEMO-0008',estado:'negociacion',fecha:ymd(15),fechaCreacion:iso(15),fechaCostos:iso(13),fechaAprobacion:iso(11),fechaEnvio:iso(10),
+      cliente:'Hotel Casa Mira',proyecto:'Mobiliario lobby y bar',atencion:'Gte. Andrés Coto',
+      notasJefe:'Cliente pide 10% de descuento; máximo autorizado 6%. Ofrecer pago de contado.',
+      items:[
+        IT('Barra de bar 4 m con cubierta de mármol laminado','pza',1,
+          [M('MAT0001','MDF NATURAL 18 MM',7,425),M('MAT0004','LAMINADO RALPH WILSON 1925-07 MARMOL BLANCO',4,1239),
+           M('MAT0018','ROLLOS DE LED 2835 BLANCO',3,350),M('MAT0027','FUENTES DE 12 V',2,586.8)],{inst:true,flete:true}),
+        IT('Panel decorativo CNC para lobby','m²',12,
+          [M('MAT0002','MDF NATURAL 12 MM',1,295),M('MAT0016','CNC',25,10),M('MAT0011','LTOS. THINNER',1,35)])],
+      historial:[H(15,'Ana Vendedora','Creación de borrador'),H(13,'Carlos Costos','Aprobado por costos'),H(11,'Juan Jefe','Aprobado por jefe'),H(10,'Ana Vendedora','Enviada al cliente'),H(7,'Ana Vendedora','Cliente solicita descuento — en negociación 💬')]})
+  ];
+  // Estados avanzados: completar campos del jefe (costos adicionales 25%+15% + flete/inst, margen 30%)
+  const JC=[{label:'Mano de Obra',tipo:'pct',valor:25},{label:'Costos Operativos',tipo:'pct',valor:15},{label:'Flete',tipo:'monto',valor:800},{label:'Instalación',tipo:'monto',valor:1200}];
+  for(const c of list){
+    if(['aprobada','enviada','aceptada','negociacion'].includes(c.estado)){
+      c.precioFinal=Math.round((c.subtotal*1.40+2000)*1.30);
+      c.monedaFinal='MXN';c.jefeCostos=JSON.parse(JSON.stringify(JC));c.jefeMargs=[10,20,30,40];
+    }
+  }
+  return list;
+}
+function cargarDemos(){
+  const cots=DB.get('cotizaciones')||[];
+  if(cots.some(c=>(c.folio||'').startsWith('DEMO-'))){toast('⚠️ Ya hay demos cargadas. Bórralas primero.');return;}
+  const demos=_demoCots();
+  DB.set('cotizaciones',cots.concat(demos));
+  toast('🎭 '+demos.length+' cotizaciones demo cargadas — revisa cada pestaña');
+}
+function borrarDemos(){
+  const cots=DB.get('cotizaciones')||[];
+  const rest=cots.filter(c=>!(c.folio||'').startsWith('DEMO-'));
+  const n=cots.length-rest.length;
+  if(!n){toast('No hay demos que borrar');return;}
+  if(!confirm('¿Eliminar '+n+' cotizaciones DEMO-*? Las reales no se tocan.'))return;
+  DB.set('cotizaciones',rest);
+  toast('🧹 '+n+' demos eliminadas');
+}
 
 // ── AUTH ──
 async function doLogin(){
@@ -1811,7 +1934,7 @@ function generarPDF(id,returnBlob){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.5',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.6',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
