@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.11 — Sistema de Cotizaciones</title>
+<title>TACRE v5.12 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.11</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.12</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -493,6 +493,14 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     <div class="modal-footer" id="env-footer"></div>
   </div>
 </div>
+<!-- MEJ-37: descuento de negociación (autorizar / aplicar) -->
+<div class="modal" id="modal-neg">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-title" id="neg-title">🏷️ Descuento de Negociación</div>
+    <div id="neg-body"></div>
+    <div class="modal-footer" id="neg-footer"></div>
+  </div>
+</div>
 <div class="modal" id="modal-user">
   <div class="modal-box">
     <div class="modal-title" id="mu-title">Nuevo Usuario</div>
@@ -571,7 +579,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.11 — NOTIFICACIONES + CHAT INTERNO
+// TACRE v5.12 — DESCUENTO DE NEGOCIACIÓN
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -604,6 +612,10 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 //        MEJ-36 chat interno 💬 (directos + difusión 📢 solo jefe/admin).
 //        NOTA: con localStorage viven por dispositivo; multi-equipo llega con
 //        Firebase v6.0 (los datos ya tienen la forma correcta para migrar).
+// v5.12: MEJ-37 descuento de negociación: el jefe autoriza un % máx (descuentoMaxNeg);
+//        el vendedor lo aplica en negociación sin pedir permiso → recalcula precioFinal
+//        (guarda precioAprobadoOriginal + descuentoNegociado), cierra o reenvía. El PDF,
+//        preliminar, WhatsApp, dashboard y utilidad reflejan el nuevo precio.
 // ═══════════════════════════════════════════════
 
 // ── CRYPTO ──
@@ -779,7 +791,7 @@ function _demoCots(){
       items:[IT('Mesa de trabajo reforzada 2 × 1 m','pza',5,
         [M('MAT0001','MDF NATURAL 18 MM',3,425),M('MAT0003','LAMINADO PLASTICO NEGRO MATE',2,330)])],
       historial:[H(4,'Ana Vendedora','Creación de borrador'),H(3,'Ana Vendedora','Enviado a revisión de costos'),H(2,'Carlos Costos','Rechazado: faltan herrajes de fijación y costo de laminado desactualizado')]}),
-    base({folio:'DEMO-0008',estado:'negociacion',fecha:ymd(15),fechaCreacion:iso(15),fechaCostos:iso(13),fechaAprobacion:iso(11),fechaEnvio:iso(10),
+    base({folio:'DEMO-0008',estado:'negociacion',fecha:ymd(15),fechaCreacion:iso(15),fechaCostos:iso(13),fechaAprobacion:iso(11),fechaEnvio:iso(10),descuentoMaxNeg:6,
       cliente:'Hotel Casa Mira',proyecto:'Mobiliario lobby y bar',atencion:'Gte. Andrés Coto',
       notasJefe:'Cliente pide 10% de descuento; máximo autorizado 6%. Ofrecer pago de contado.',
       items:[
@@ -839,7 +851,7 @@ function _demoCots(){
       const cierre=Math.max(1,creado-6-Math.floor(Math.random()*20)); // ciclo 6–26 días
       o.fechaRespuesta=iso(cierre);avanza(cierre,v.n,'Cliente aceptó la propuesta 🤝');
     }
-    if(estado==='negociacion')avanza(creado-6,v.n,'Cliente solicita ajuste — en negociación 💬');
+    if(estado==='negociacion'){avanza(creado-6,v.n,'Cliente solicita ajuste — en negociación 💬');o.descuentoMaxNeg=[4,5,6,8][i%4];}
     list.push(o);
   });
   // Estados avanzados de las 8 artesanales: completar campos del jefe (margen 30%)
@@ -1606,6 +1618,8 @@ function abrirJefeAprob(id){
           <select id="ja-moneda" onchange="event.stopPropagation()">${monedaOpts}</select>
         </div>
       </div>
+      <div class="fg"><label>🏷️ Descuento máx. autorizado en negociación (%) <span style="font-weight:400;color:var(--n5);text-transform:none;letter-spacing:0;">— el vendedor podrá cederlo sin volver a pedir permiso</span></label>
+        <input type="number" id="ja-descmax" value="${cot.descuentoMaxNeg||0}" min="0" max="100" step="0.5" placeholder="0"></div>
       <button class="btn btn-t btn-sm" style="width:100%;" onclick="verPreliminarCot('${id}')">👁️ Ver Preliminar de Cotización</button>
     </div>
     <div class="fg">
@@ -1702,6 +1716,7 @@ function confirmarJefeAprob(){
   cots[idx].monedaFinal=document.getElementById('ja-moneda').value;
   cots[idx].jefeCostos=STATE.jefeCostos;
   cots[idx].jefeMargs=[1,2,3,4].map(n=>parseFloat(document.getElementById('ja-m'+n)?.value)||0);
+  cots[idx].descuentoMaxNeg=parseFloat(document.getElementById('ja-descmax')?.value)||0; // MEJ-37
   cots[idx].notasJefe=document.getElementById('ja-notas').value;
   cots[idx].fechaAprobacion=new Date().toISOString();
   agregarHistorial(cots[idx],'Aprobado por jefe. Precio: '+precio);
@@ -1938,10 +1953,13 @@ function abrirDetalleCot(id){
       ${fila('Costo base materiales',syF+fmtNum(baseMat))}
       ${adics.map(a=>fila(a.label+' <span style="color:var(--n5);font-weight:400;">('+a.det+')</span>',syF+fmtNum(a.monto))).join('')}
       ${fila('Costo total',syF+fmtNum(costoTotal),'border-top:1px solid rgba(90,45,130,.2);margin-top:4px;padding-top:6px;')}
+      ${cot.descuentoNegociado?fila('Precio aprobado original',mFin+' '+syF+fmtNum(cot.precioAprobadoOriginal||cot.precioFinal)):''}
+      ${cot.descuentoNegociado?fila('🏷️ Descuento negociado ('+cot.descuentoNegociado+'%)','- '+syF+fmtNum((cot.precioAprobadoOriginal||cot.precioFinal)-cot.precioFinal),'color:#dc2626;'):''}
       ${fila('Precio final (antes de IVA)',mFin+' '+syF+fmtNum(cot.precioFinal))}
-      ${fila('💰 Utilidad',syF+fmtNum(uti)+' <span style="color:var(--td);">('+margPct+'% s/costo)</span>','color:var(--td);background:var(--tl);border-radius:6px;padding:6px 8px;margin-top:4px;')}
+      ${fila('💰 Utilidad'+(cot.descuentoNegociado?' tras descuento':''),syF+fmtNum(uti)+' <span style="color:var(--td);">('+margPct+'% s/costo)</span>','color:var(--td);background:var(--tl);border-radius:6px;padding:6px 8px;margin-top:4px;')}
       ${fila('Total con IVA ('+(cot.iva!=null?cot.iva:16)+'%)',syF+fmtNum(cot.precioFinal*(1+(cot.iva!=null?cot.iva:16)/100)))}
       ${cot.jefeMargs?`<div style="margin-top:8px;font-size:.72rem;color:var(--n5);">Escenarios evaluados: ${cot.jefeMargs.map(m=>'<span class="chip">'+m+'%</span>').join('')}</div>`:''}
+      ${cot.descuentoMaxNeg?`<div style="margin-top:6px;font-size:.72rem;color:var(--n5);">🏷️ Descuento autorizado en negociación: hasta ${cot.descuentoMaxNeg}%${cot.descuentoNegociado?' · aplicado: '+cot.descuentoNegociado+'%':''}</div>`:''}
     </div>`;
   }
   // MEJ-31: propuesta original del vendedor visible en cualquier etapa
@@ -1957,6 +1975,8 @@ function abrirDetalleCot(id){
     ${(cot.estado==='aprobada'||cot.estado==='enviada'||cot.estado==='aceptada'||cot.estado==='negociacion')?`<div style="background:var(--tl);border-radius:var(--r-sm);padding:12px;margin-bottom:12px;font-size:.88rem;">
       <strong>💰 Precio Aprobado: ${cot.monedaFinal||cot.moneda} ${symDe(cot.monedaFinal||cot.moneda)}${fmtNum(cot.precioFinal)}</strong>
       <span style="color:var(--n5);font-size:.8rem;"> · Total con IVA (${cot.iva!=null?cot.iva:16}%): ${symDe(cot.monedaFinal||cot.moneda)}${fmtNum((cot.precioFinal||0)*(1+(cot.iva!=null?cot.iva:16)/100))}</span>
+      ${cot.descuentoNegociado?`<br><span style="color:var(--td);font-size:.82rem;font-weight:700;">🏷️ Descuento negociado aplicado: ${cot.descuentoNegociado}% (precio original ${symDe(cot.monedaFinal||cot.moneda)}${fmtNum(cot.precioAprobadoOriginal||cot.precioFinal)})</span>`:''}
+      ${(cot.estado==='negociacion'&&cot.descuentoMaxNeg)?`<br><span style="color:var(--n5);font-size:.8rem;">🏷️ El jefe autorizó ceder hasta ${cot.descuentoMaxNeg}% de descuento</span>`:''}
       ${cot.notasJefe?`<br><span style="color:var(--n5);">Notas del jefe: ${sanitize(cot.notasJefe)}</span>`:''}
     </div>`:''}
     ${desgloseJefe}
@@ -2010,7 +2030,12 @@ function abrirDetalleCot(id){
       <button class="btn btn-t btn-sm" onclick="generarPDF('${id}')">📄 PDF</button>
       <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');compartirWA('${id}')">📱 WhatsApp</button>
       <button class="btn btn-t btn-sm" onclick="closeModal('modal-cot');compartirEmail('${id}')">✉️ Correo</button>
+      <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');abrirDescuentoNeg('${id}')">🏷️ Aplicar Descuento y Cerrar</button>
       <button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirModalEnviar('${id}')">📋 Registrar Respuesta Cliente</button>`;
+  }
+  // MEJ-37: el jefe/admin puede autorizar (o ajustar) el descuento de negociación
+  if(cot.estado==='negociacion'&&(hasRole('jefe')||hasRole('admin'))){
+    footer.innerHTML+=`<button class="btn btn-out btn-sm" onclick="closeModal('modal-cot');abrirAutorizarDesc('${id}')">⚙️ Autorizar descuento</button>`;
   }
   // FIX-18: PDF disponible en estados finales
   if((cot.estado==='aceptada'||cot.estado==='rechazada')&&(cot.vendedorId===STATE.user.id||hasRole('admin')||hasRole('jefe'))){
@@ -2136,6 +2161,99 @@ function registrarRespuesta(id){
   notificar({roles:['jefe'],ico:icoResp,cotId:cots[idx].id,texto:'Cliente '+(resp==='aceptada'?'ACEPTÓ':resp==='rechazada'?'rechazó':'quiere negociar')+' '+cots[idx].folio+' ('+cots[idx].cliente+')'});
   notificar({userId:cots[idx].vendedorId,ico:icoResp,cotId:cots[idx].id,texto:'Respuesta del cliente en '+cots[idx].folio+': '+resp});
   closeModal('modal-enviar');toast('Respuesta registrada: '+resp);renderMis();
+}
+
+// ── MEJ-37: DESCUENTO DE NEGOCIACIÓN ──
+// El jefe autoriza un % máximo; el vendedor lo aplica sin pedir permiso, recalcula el
+// precio final (y por lo tanto PDF, preliminar, WhatsApp, dashboard y utilidad, que
+// leen precioFinal) y cierra o reenvía. Se conserva precioAprobadoOriginal para auditar.
+function _precioBaseNeg(cot){return cot.precioAprobadoOriginal||cot.precioFinal||0;}
+function abrirAutorizarDesc(id){
+  const cot=getCotById(id);if(!cot)return;
+  document.getElementById('neg-title').textContent='⚙️ Autorizar descuento de negociación';
+  document.getElementById('neg-body').innerHTML=`
+    <p style="font-size:.84rem;color:var(--n7);margin-bottom:12px;">Define hasta qué % de descuento puede ceder el vendedor <strong>sin volver a pedirte permiso</strong> en <strong>${sanitize(cot.folio)}</strong> (${sanitize(cot.cliente)}).</p>
+    <div class="fg"><label>Descuento máximo autorizado (%)</label>
+      <input type="number" id="neg-max" value="${cot.descuentoMaxNeg||0}" min="0" max="100" step="0.5"></div>
+    <div style="font-size:.78rem;color:var(--n5);">Precio aprobado (antes de IVA): ${cot.monedaFinal||cot.moneda} ${symDe(cot.monedaFinal||cot.moneda)}${fmtNum(_precioBaseNeg(cot))}</div>`;
+  document.getElementById('neg-footer').innerHTML=`
+    <button class="btn btn-out btn-sm" onclick="closeModal('modal-neg')">Cancelar</button>
+    <button class="btn btn-p btn-sm" onclick="guardarAutorizacionDesc('${id}')">Guardar autorización</button>`;
+  openModal('modal-neg');
+}
+function guardarAutorizacionDesc(id){
+  const max=parseFloat(document.getElementById('neg-max')?.value)||0;
+  if(max<0||max>100){toast('Descuento inválido (0–100%)');return;}
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
+  cots[idx].descuentoMaxNeg=max;
+  agregarHistorial(cots[idx],'Jefe autorizó descuento de negociación hasta '+max+'%');
+  DB.set('cotizaciones',cots);
+  notificar({userId:cots[idx].vendedorId,ico:'🏷️',cotId:id,texto:'El jefe autorizó hasta '+max+'% de descuento en '+cots[idx].folio+' — ya puedes aplicarlo'});
+  closeModal('modal-neg');toast('✓ Descuento autorizado: hasta '+max+'%');
+}
+function abrirDescuentoNeg(id){
+  const cot=getCotById(id);if(!cot)return;
+  const max=cot.descuentoMaxNeg||0;
+  const syF=symDe(cot.monedaFinal||cot.moneda);const mFin=cot.monedaFinal||cot.moneda;
+  document.getElementById('neg-title').textContent='🏷️ Aplicar descuento y cerrar';
+  if(max<=0){
+    document.getElementById('neg-body').innerHTML=`<div style="background:#fef9c3;border-radius:8px;padding:14px;font-size:.85rem;color:#713f12;">
+      ⚠️ El jefe aún no autorizó un descuento para esta cotización.<br><br>Solicítalo por el 💬 chat interno, o pídele que lo autorice desde el detalle (botón ⚙️ Autorizar descuento). Máximo autorizado actual: <strong>0%</strong>.</div>`;
+    document.getElementById('neg-footer').innerHTML=`<button class="btn btn-out btn-sm" onclick="closeModal('modal-neg')">Cerrar</button>`;
+    openModal('modal-neg');return;
+  }
+  document.getElementById('neg-body').innerHTML=`
+    <div style="background:var(--tl);border-radius:8px;padding:10px 12px;font-size:.82rem;margin-bottom:12px;">
+      ✅ El jefe autorizó hasta <strong>${max}%</strong> de descuento.<br>
+      Precio aprobado (antes de IVA): <strong>${mFin} ${syF}${fmtNum(_precioBaseNeg(cot))}</strong></div>
+    <div class="fg"><label>Descuento a aplicar (%) — máx ${max}%</label>
+      <input type="number" id="neg-desc" value="${cot.descuentoNegociado||''}" min="0" max="${max}" step="0.5" placeholder="0" oninput="_previewDescNeg('${id}')"></div>
+    <div id="neg-preview" style="font-size:.9rem;"></div>
+    <div class="fg" style="margin-top:12px;"><label>¿Qué hacemos?</label>
+      <select id="neg-outcome">
+        <option value="aceptada">✅ El cliente aceptó con este descuento (cerrar venta)</option>
+        <option value="enviada">📤 Reenviar la oferta actualizada al cliente</option>
+      </select></div>`;
+  document.getElementById('neg-footer').innerHTML=`
+    <button class="btn btn-out btn-sm" onclick="closeModal('modal-neg')">Cancelar</button>
+    <button class="btn btn-ok btn-sm" onclick="aplicarDescuentoNeg('${id}')">Aplicar</button>`;
+  openModal('modal-neg');_previewDescNeg(id);
+}
+function _previewDescNeg(id){
+  const cot=getCotById(id);if(!cot)return;
+  const max=cot.descuentoMaxNeg||0;
+  const d=parseFloat(document.getElementById('neg-desc')?.value)||0;
+  const syF=symDe(cot.monedaFinal||cot.moneda);const ivaPct=cot.iva!=null?cot.iva:16;
+  const base=_precioBaseNeg(cot);const el=document.getElementById('neg-preview');if(!el)return;
+  if(d>max){el.innerHTML=`<div style="color:#dc2626;font-weight:700;">⛔ ${d}% supera el máximo autorizado (${max}%).</div>`;return;}
+  const nuevo=base*(1-d/100);
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Descuento (${d}%)</span><span style="color:#dc2626;font-weight:700;">- ${syF}${fmtNum(base-nuevo)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:2px 0;border-top:1px solid var(--n3);margin-top:4px;padding-top:6px;"><span style="font-weight:700;">Nuevo precio (antes de IVA)</span><span style="font-weight:900;color:var(--p);">${syF}${fmtNum(nuevo)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Total con IVA (${ivaPct}%)</span><span style="font-weight:700;">${syF}${fmtNum(nuevo*(1+ivaPct/100))}</span></div>`;
+}
+function aplicarDescuentoNeg(id){
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
+  const cot=cots[idx];const max=cot.descuentoMaxNeg||0;
+  const d=parseFloat(document.getElementById('neg-desc')?.value)||0;
+  const outcome=document.getElementById('neg-outcome')?.value||'aceptada';
+  if(d<0){toast('Descuento inválido');return;}
+  if(d>max){toast('⛔ Supera el máximo autorizado ('+max+'%)');return;}
+  if(!transicionValida(cot.estado,outcome)){toast('Transición no válida.');return;}
+  if(!confirm(outcome==='aceptada'?'¿Cerrar la venta con '+d+'% de descuento?':'¿Reenviar la oferta con '+d+'% de descuento?'))return;
+  const base=_precioBaseNeg(cot);
+  if(!cot.precioAprobadoOriginal)cot.precioAprobadoOriginal=cot.precioFinal;
+  cot.descuentoNegociado=d;
+  cot.precioFinal=+(base*(1-d/100)).toFixed(2);
+  cot.estado=outcome;
+  const syF=symDe(cot.monedaFinal||cot.moneda);
+  if(outcome==='aceptada')cot.fechaRespuesta=new Date().toISOString();else cot.fechaEnvio=new Date().toISOString();
+  agregarHistorial(cot,'Descuento de negociación '+d+'% aplicado → '+(cot.monedaFinal||'')+' '+fmtNum(cot.precioFinal)+(outcome==='aceptada'?' · Cliente aceptó 🤝':' · Reenviada al cliente'));
+  DB.set('cotizaciones',cots);
+  notificar({roles:['jefe'],ico:outcome==='aceptada'?'🤝':'📤',cotId:id,texto:cot.folio+': vendedor aplicó '+d+'% de descuento → '+syF+fmtNum(cot.precioFinal)+(outcome==='aceptada'?' y el cliente ACEPTÓ':' y reenvió la oferta')});
+  closeModal('modal-neg');
+  toast(outcome==='aceptada'?'🤝 Venta cerrada con '+d+'% de descuento':'📤 Oferta actualizada reenviada');
+  renderMis();
 }
 
 // ── COPIAR COTIZACIÓN ──
@@ -2444,7 +2562,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.11',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.12',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
