@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.10 — Sistema de Cotizaciones</title>
+<title>TACRE v5.11 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -217,6 +217,32 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 .rank-tbl td{padding:8px;border-bottom:1px solid var(--n1)}
 .rank-tbl tr:first-child td{font-weight:700}
 .rank-pos{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--pl);color:var(--p);font-weight:900;font-size:.72rem;align-items:center;justify-content:center}
+/* ═══ MEJ-35/36 (v5.11): Notificaciones + Chat interno ═══ */
+.nav-icon-btn{position:relative;background:rgba(255,255,255,.12);border:none;border-radius:9px;width:34px;height:34px;font-size:1rem;cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center}
+.nav-icon-btn:hover{background:rgba(255,255,255,.25)}
+.nbadge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:.6rem;font-weight:900;min-width:16px;height:16px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 1px 4px rgba(0,0,0,.3);animation:cardIn .3s}
+.notif-item{display:flex;gap:10px;padding:10px 12px;border-radius:var(--r-sm);margin-bottom:6px;cursor:pointer;transition:var(--tr);border:1px solid var(--n1);align-items:flex-start}
+.notif-item:hover{background:var(--pl)}
+.notif-item.no-leida{background:var(--tl);border-color:rgba(0,168,168,.25)}
+.notif-item .n-ico{font-size:1.1rem;flex-shrink:0}
+.notif-item .n-txt{font-size:.8rem;line-height:1.4;flex:1}
+.notif-item .n-fecha{font-size:.66rem;color:var(--n5);white-space:nowrap}
+.chat-conv{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;transition:var(--tr);border:1px solid var(--n1);margin-bottom:6px}
+.chat-conv:hover{background:var(--pl)}
+.chat-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--t));color:#fff;font-weight:900;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-conv .c-info{flex:1;min-width:0}
+.chat-conv .c-nombre{font-weight:700;font-size:.84rem}
+.chat-conv .c-prev{font-size:.72rem;color:var(--n5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-msgs{max-height:44vh;min-height:180px;overflow-y:auto;padding:10px;background:var(--pu);border-radius:var(--r-sm);border:1px solid var(--n1);display:flex;flex-direction:column;gap:6px;-webkit-overflow-scrolling:touch}
+.burbuja{max-width:80%;padding:8px 12px;border-radius:14px;font-size:.82rem;line-height:1.4;animation:cardIn .25s;word-break:break-word}
+.burbuja.mia{align-self:flex-end;background:linear-gradient(135deg,var(--p),#6d3fa0);color:#fff;border-bottom-right-radius:4px}
+.burbuja.otra{align-self:flex-start;background:var(--wh);border:1px solid var(--n3);border-bottom-left-radius:4px}
+.burbuja .b-de{font-size:.64rem;font-weight:800;color:var(--td);margin-bottom:2px}
+.burbuja.mia .b-de{display:none}
+.burbuja .b-hora{font-size:.6rem;opacity:.65;text-align:right;margin-top:3px}
+.chat-input-row{display:flex;gap:8px;margin-top:10px}
+.chat-input-row input{flex:1;padding:10px 14px;border:1.5px solid var(--n3);border-radius:20px;font-family:'Inter',sans-serif;font-size:16px}
+.chat-input-row input:focus{outline:none;border-color:var(--t)}
 /* Respeto a usuarios con movimiento reducido */
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -228,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.10</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.11</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -246,6 +272,8 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     </div>
     <div class="nav-tabs" id="nav-tabs"></div>
     <div class="nav-user">
+      <button class="nav-icon-btn" onclick="abrirNotifs()" title="Notificaciones">🔔<span class="nbadge" id="notif-badge" style="display:none">0</span></button>
+      <button class="nav-icon-btn" onclick="abrirChat()" title="Mensajes">💬<span class="nbadge" id="chat-badge" style="display:none">0</span></button>
       <span class="role-badge" id="nav-rol"></span>
       <span class="nav-name" id="nav-nombre" style="font-size:.8rem;color:rgba(255,255,255,.85)"></span>
       <button class="btn-logout" onclick="doLogout()">← Salir</button>
@@ -513,11 +541,37 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     </div>
   </div>
 </div>
+<!-- MEJ-35: Notificaciones -->
+<div class="modal" id="modal-notifs">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">🔔 Notificaciones
+      <button class="btn btn-out btn-sm" onclick="marcarTodasLeidas()" style="font-size:.68rem;">✓ Marcar todas leídas</button>
+    </div>
+    <div id="notifs-list" style="max-height:55vh;overflow-y:auto;"></div>
+    <div class="modal-footer"><button class="btn btn-out btn-sm" onclick="closeModal('modal-notifs')">Cerrar</button></div>
+  </div>
+</div>
+<!-- MEJ-36: Chat interno -->
+<div class="modal" id="modal-chat">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-title" id="chat-titulo">💬 Mensajes internos</div>
+    <div id="chat-lista"></div>
+    <div id="chat-thread" style="display:none;">
+      <button class="btn btn-out btn-sm" style="margin-bottom:10px;" onclick="volverAChats()">← Conversaciones</button>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." maxlength="500" onkeydown="if(event.key==='Enter')enviarMsgChat()">
+        <button class="btn btn-p btn-sm" onclick="enviarMsgChat()">Enviar ➤</button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-out btn-sm" onclick="closeModal('modal-chat')">Cerrar</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.10 — PDF≡PRELIMINAR + EDICIÓN ADMIN
+// TACRE v5.11 — NOTIFICACIONES + CHAT INTERNO
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -545,6 +599,11 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 //        MEJ-33 mensaje WhatsApp/correo con folio y TOTAL oficial (vistaCliente);
 //        MEJ-34 edición administrativa: jefe/admin editan la propuesta en
 //        pendiente_costos/pendiente_jefe conservando estado y vendedor original
+// v5.11: MEJ-35 campana 🔔 de notificaciones por rol/usuario en cada transición del
+//        flujo (aprobó/rechazó costos, aprobó jefe, respuesta cliente...);
+//        MEJ-36 chat interno 💬 (directos + difusión 📢 solo jefe/admin).
+//        NOTA: con localStorage viven por dispositivo; multi-equipo llega con
+//        Firebase v6.0 (los datos ya tienen la forma correcta para migrar).
 // ═══════════════════════════════════════════════
 
 // ── CRYPTO ──
@@ -800,17 +859,168 @@ function cargarDemos(){
   if(cots.some(c=>(c.folio||'').startsWith('DEMO-'))){toast('⚠️ Ya hay demos cargadas. Bórralas primero.');return;}
   const demos=_demoCots();
   DB.set('cotizaciones',cots.concat(demos));
-  toast('🎭 '+demos.length+' cotizaciones demo cargadas — revisa cada pestaña');
+  // MEJ-35/36: sembrar notificaciones y mensajes demo (marcados demo:true)
+  const iso=n=>{const d=new Date();d.setHours(d.getHours()-n);return d.toISOString();};
+  const dPJ=demos.find(c=>c.estado==='pendiente_jefe'),dAc=demos.find(c=>c.estado==='aceptada'),dRe=demos.find(c=>c.estado==='rechazada');
+  const ns=DB.get('notifs')||[];
+  ns.push(
+    {id:generateUUID(),demo:true,fecha:iso(2),roles:['jefe'],userId:null,ico:'🔵',cotId:dPJ&&dPJ.id,de:'Carlos Costos',texto:(dPJ?dPJ.folio:'DEMO')+' lista para aprobación final',leidaPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(5),roles:['jefe'],userId:null,ico:'🤝',cotId:dAc&&dAc.id,de:'Ana Vendedora',texto:'Cliente ACEPTÓ '+(dAc?dAc.folio+' ('+dAc.cliente+')':''),leidaPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(8),roles:null,userId:2,ico:'✗',cotId:dRe&&dRe.id,de:'Carlos Costos',texto:'Costos rechazó '+(dRe?dRe.folio:'')+': estructura incompleta — corrígela y reenvíala',leidaPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(1),roles:['costos'],userId:null,ico:'⏳',cotId:null,de:'Ana Vendedora',texto:'Nueva cotización pendiente de revisión de costos',leidaPor:[]}
+  );
+  DB.set('notifs',ns.slice(-200));
+  const ms=DB.get('mensajes')||[];
+  ms.push(
+    {id:generateUUID(),demo:true,fecha:iso(26),deId:4,deNombre:'Juan Jefe',para:'todos',paraId:null,texto:'Equipo: esta semana cierra el trimestre. Prioridad a las cotizaciones en negociación 💪',leidoPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(7),deId:4,deNombre:'Juan Jefe',para:null,paraId:2,texto:'Ana, ¿ya le diste seguimiento al Hotel Casa Mira? El cliente pedía 10% de descuento.',leidoPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(6),deId:2,deNombre:'Ana Vendedora',para:null,paraId:4,texto:'Sí jefe, le ofrecí 6% con pago de contado como acordamos. Espero respuesta mañana.',leidoPor:[]},
+    {id:generateUUID(),demo:true,fecha:iso(3),deId:3,deNombre:'Carlos Costos',para:null,paraId:4,texto:'Jefe, el proveedor subió el MDF 8%. ¿Actualizo el catálogo?',leidoPor:[]}
+  );
+  DB.set('mensajes',ms.slice(-500));
+  actualizarBadges();
+  toast('🎭 '+demos.length+' cotizaciones demo cargadas — revisa cada pestaña, la 🔔 y el 💬');
 }
 function borrarDemos(){
   const cots=DB.get('cotizaciones')||[];
   const rest=cots.filter(c=>!(c.folio||'').startsWith('DEMO-'));
   const n=cots.length-rest.length;
   if(!n){toast('No hay demos que borrar');return;}
-  if(!confirm('¿Eliminar '+n+' cotizaciones DEMO-*? Las reales no se tocan.'))return;
+  if(!confirm('¿Eliminar '+n+' cotizaciones DEMO-* y sus notificaciones/mensajes demo? Las reales no se tocan.'))return;
   DB.set('cotizaciones',rest);
-  toast('🧹 '+n+' demos eliminadas');
+  DB.set('notifs',(DB.get('notifs')||[]).filter(x=>!x.demo));
+  DB.set('mensajes',(DB.get('mensajes')||[]).filter(x=>!x.demo));
+  actualizarBadges();
+  toast('🧹 '+n+' demos eliminadas (con sus notifs y mensajes)');
 }
+
+// ── MEJ-35: NOTIFICACIONES POR ROL ──
+// Cada transición del flujo genera una notificación dirigida a roles o a un usuario.
+// Nota: con localStorage viven en este dispositivo; con Firebase (v6.0) serán multi-equipo.
+function notificar(o){ // {roles:[], userId, texto, ico, cotId}
+  const ns=DB.get('notifs')||[];
+  ns.push({id:generateUUID(),fecha:new Date().toISOString(),roles:o.roles||null,userId:o.userId||null,
+    texto:o.texto,ico:o.ico||'🔔',cotId:o.cotId||null,de:STATE.user?STATE.user.nombre:'Sistema',leidaPor:[]});
+  DB.set('notifs',ns.slice(-200));
+  actualizarBadges();
+}
+function misNotifs(){
+  const me=STATE.user;if(!me)return[];
+  return (DB.get('notifs')||[]).filter(n=>
+    (n.userId&&n.userId===me.id)||(n.roles&&n.roles.some(r=>me.roles.includes(r)))
+  ).reverse();
+}
+function abrirNotifs(){renderNotifs();openModal('modal-notifs');}
+function renderNotifs(){
+  const c=document.getElementById('notifs-list');if(!c)return;
+  const ns=misNotifs();
+  if(!ns.length){c.innerHTML='<div class="empty" style="padding:24px;"><div class="ei">🔕</div><p>Sin notificaciones</p></div>';return;}
+  c.innerHTML=ns.map(n=>`<div class="notif-item ${n.leidaPor.includes(STATE.user.id)?'':'no-leida'}" onclick="clickNotif('${n.id}')">
+    <div class="n-ico">${n.ico}</div>
+    <div class="n-txt">${sanitize(n.texto)}<div style="font-size:.66rem;color:var(--n5);margin-top:2px;">${sanitize(n.de)}</div></div>
+    <div class="n-fecha">${fmtFechaHora(n.fecha)}</div>
+  </div>`).join('');
+}
+function clickNotif(id){
+  const ns=DB.get('notifs')||[];const n=ns.find(x=>x.id===id);if(!n)return;
+  if(!n.leidaPor.includes(STATE.user.id)){n.leidaPor.push(STATE.user.id);DB.set('notifs',ns);}
+  actualizarBadges();
+  if(n.cotId&&(DB.get('cotizaciones')||[]).some(c=>c.id===n.cotId)){closeModal('modal-notifs');abrirDetalleCot(n.cotId);}
+  else renderNotifs();
+}
+function marcarTodasLeidas(){
+  const ns=DB.get('notifs')||[];const me=STATE.user.id;
+  misNotifs().forEach(mn=>{const n=ns.find(x=>x.id===mn.id);if(n&&!n.leidaPor.includes(me))n.leidaPor.push(me);});
+  DB.set('notifs',ns);renderNotifs();actualizarBadges();
+}
+function fmtFechaHora(iso){try{const d=new Date(iso);const hoy=new Date().toDateString()===d.toDateString();
+  return hoy?d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'});}catch(e){return'';}}
+
+// ── MEJ-36: CHAT INTERNO ──
+// Mensajes directos entre usuarios + difusión 📢 a todos (solo jefe/admin escriben ahí).
+function _msgs(){return DB.get('mensajes')||[];}
+function msgsNoLeidos(){
+  const me=STATE.user;if(!me)return 0;
+  return _msgs().filter(m=>((m.paraId===me.id)||(m.para==='todos'&&m.deId!==me.id))&&!m.leidoPor.includes(me.id)).length;
+}
+function abrirChat(){STATE.chatCon=null;volverAChats();openModal('modal-chat');}
+function volverAChats(){
+  STATE.chatCon=null;
+  document.getElementById('chat-thread').style.display='none';
+  document.getElementById('chat-lista').style.display='block';
+  document.getElementById('chat-titulo').textContent='💬 Mensajes internos';
+  renderChatLista();
+}
+function renderChatLista(){
+  const c=document.getElementById('chat-lista');if(!c)return;
+  const me=STATE.user;const msgs=_msgs();
+  const noLeidosDe=id=>msgs.filter(m=>m.deId===id&&m.paraId===me.id&&!m.leidoPor.includes(me.id)).length;
+  const noLeidosTodos=msgs.filter(m=>m.para==='todos'&&m.deId!==me.id&&!m.leidoPor.includes(me.id)).length;
+  const ultimo=filtro=>{const ms=msgs.filter(filtro);return ms.length?ms[ms.length-1].texto:'';};
+  const users=(DB.get('usuarios')||[]).filter(u=>u.activo&&u.id!==me.id);
+  const badge=n=>n?`<span class="nbadge" style="position:static;">${n}</span>`:'';
+  c.innerHTML=`
+    <div class="chat-conv" onclick="abrirConversacion('todos')">
+      <div class="chat-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">📢</div>
+      <div class="c-info"><div class="c-nombre">Difusión — Todos</div>
+      <div class="c-prev">${sanitize(ultimo(m=>m.para==='todos')||'Anuncios del jefe para todo el equipo')}</div></div>${badge(noLeidosTodos)}
+    </div>
+    ${users.map(u=>`<div class="chat-conv" onclick="abrirConversacion(${u.id})">
+      <div class="chat-avatar">${sanitize((u.nombre||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase())}</div>
+      <div class="c-info"><div class="c-nombre">${sanitize(u.nombre)} <span style="font-weight:400;color:var(--n5);font-size:.68rem;">(${u.roles.join(', ')})</span></div>
+      <div class="c-prev">${sanitize(ultimo(m=>(m.deId===me.id&&m.paraId===u.id)||(m.deId===u.id&&m.paraId===me.id))||'Iniciar conversación...')}</div></div>${badge(noLeidosDe(u.id))}
+    </div>`).join('')}`;
+}
+function abrirConversacion(con){
+  STATE.chatCon=con;
+  document.getElementById('chat-lista').style.display='none';
+  document.getElementById('chat-thread').style.display='block';
+  const nombre=con==='todos'?'📢 Difusión — Todos':sanitize(((DB.get('usuarios')||[]).find(u=>u.id===con)||{}).nombre||'');
+  document.getElementById('chat-titulo').textContent='💬 '+nombre.replace(/<[^>]*>/g,'');
+  const input=document.getElementById('chat-input');
+  const puedeEscribir=con!=='todos'||hasRole('jefe')||hasRole('admin');
+  input.disabled=!puedeEscribir;
+  input.placeholder=puedeEscribir?'Escribe un mensaje...':'Solo jefe/admin pueden enviar difusiones';
+  renderThread();
+}
+function renderThread(){
+  const c=document.getElementById('chat-msgs');if(!c||STATE.chatCon==null)return;
+  const me=STATE.user;const con=STATE.chatCon;const msgs=_msgs();
+  const hilo=msgs.filter(m=>con==='todos'?m.para==='todos':((m.deId===me.id&&m.paraId===con)||(m.deId===con&&m.paraId===me.id)));
+  // marcar leídos los que me tocan
+  let cambio=false;
+  hilo.forEach(m=>{if(m.deId!==me.id&&!m.leidoPor.includes(me.id)){m.leidoPor.push(me.id);cambio=true;}});
+  if(cambio){DB.set('mensajes',msgs);actualizarBadges();}
+  c.innerHTML=hilo.length?hilo.map(m=>`<div class="burbuja ${m.deId===me.id?'mia':'otra'}">
+    <div class="b-de">${sanitize(m.deNombre)}</div>${sanitize(m.texto)}
+    <div class="b-hora">${fmtFechaHora(m.fecha)}</div>
+  </div>`).join(''):'<div style="text-align:center;color:var(--n5);font-size:.8rem;padding:20px;">Sin mensajes aún — escribe el primero 👇</div>';
+  c.scrollTop=c.scrollHeight;
+}
+function enviarMsgChat(){
+  const input=document.getElementById('chat-input');
+  const texto=(input.value||'').trim();if(!texto||STATE.chatCon==null)return;
+  if(STATE.chatCon==='todos'&&!(hasRole('jefe')||hasRole('admin'))){toast('Solo jefe/admin envían difusiones');return;}
+  const msgs=_msgs();
+  msgs.push({id:generateUUID(),fecha:new Date().toISOString(),deId:STATE.user.id,deNombre:STATE.user.nombre,
+    para:STATE.chatCon==='todos'?'todos':null,paraId:STATE.chatCon==='todos'?null:STATE.chatCon,texto,leidoPor:[]});
+  DB.set('mensajes',msgs.slice(-500));
+  input.value='';renderThread();
+}
+// Badges + refresco ligero (multi-pestaña vía evento storage)
+function actualizarBadges(){
+  if(!STATE.user)return;
+  const nb=document.getElementById('notif-badge');
+  const cb=document.getElementById('chat-badge');
+  const n=misNotifs().filter(x=>!x.leidaPor.includes(STATE.user.id)).length;
+  const m=msgsNoLeidos();
+  if(nb){nb.textContent=n;nb.style.display=n?'flex':'none';}
+  if(cb){cb.textContent=m;cb.style.display=m?'flex':'none';}
+}
+window.addEventListener('storage',()=>{actualizarBadges();
+  if(document.getElementById('modal-chat')?.classList.contains('open')&&STATE.chatCon!=null)renderThread();
+  if(document.getElementById('modal-notifs')?.classList.contains('open'))renderNotifs();
+});
 
 // ── AUTH ──
 async function doLogin(){
@@ -836,6 +1046,12 @@ function _entrarApp(u){
   document.getElementById('nav-rol').textContent=u.roles.join('+');
   document.getElementById('nav-nombre').textContent=u.nombre.split(' ')[0];
   buildTabs();activateTab(getFirstTab());
+  // MEJ-35/36: badges de notificaciones y chat + refresco ligero
+  actualizarBadges();
+  if(STATE.badgeTimer)clearInterval(STATE.badgeTimer);
+  STATE.badgeTimer=setInterval(()=>{actualizarBadges();
+    if(document.getElementById('modal-chat')?.classList.contains('open')&&STATE.chatCon!=null)renderThread();
+  },5000);
 }
 // FIX-26: restaurar sesión al cargar (si no expiró y el usuario sigue activo)
 function restaurarSesion(){
@@ -848,7 +1064,8 @@ function restaurarSesion(){
   return true;
 }
 function doLogout(){
-  STATE.user=null;STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;clearAutoSave();
+  STATE.user=null;STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;STATE.editEstado=null;clearAutoSave();
+  if(STATE.badgeTimer){clearInterval(STATE.badgeTimer);STATE.badgeTimer=null;}
   localStorage.removeItem('tacre_sesion'); // FIX-26: salir borra la sesión persistida
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app-screen').style.display='none';
@@ -1148,7 +1365,10 @@ function guardarBorrador(){
   if(!document.getElementById('f-cliente').value){toast('⚠️ Ingresa el nombre del cliente');return;}
   // MEJ-34: en edición administrativa el guardado CONSERVA el estado original
   const cots=DB.get('cotizaciones')||[];const data=getCotData(STATE.editEstado||'borrador');
-  if(STATE.editEstado)agregarHistorial(data,'Edición administrativa de la propuesta');
+  if(STATE.editEstado){
+    agregarHistorial(data,'Edición administrativa de la propuesta');
+    if(data.vendedorId!==STATE.user.id)notificar({userId:data.vendedorId,ico:'🛠️',cotId:data.id,texto:STATE.user.nombre+' editó tu propuesta '+data.folio+' ('+STATE.editEstado.replace('_',' ')+')'});
+  }
   const idx=cots.findIndex(c=>c.id===data.id);
   if(idx>=0)cots[idx]=data;else cots.push(data);
   DB.set('cotizaciones',cots);STATE.editId=data.id;
@@ -1166,7 +1386,9 @@ function enviarACostos(){
     cots[idx]=data;
   }else cots.push(data);
   agregarHistorial(data,'Enviado a revisión de costos');
-  DB.set('cotizaciones',cots);toast('📤 Cotización '+data.folio+' enviada a Costos');limpiarForm();
+  DB.set('cotizaciones',cots);
+  notificar({roles:['costos'],ico:'⏳',cotId:data.id,texto:'Nueva cotización '+data.folio+' ('+data.cliente+') pendiente de revisión de costos'});
+  toast('📤 Cotización '+data.folio+' enviada a Costos');limpiarForm();
 }
 function iniciarAutoSave(){clearAutoSave();STATE.autoSaveTimer=setInterval(()=>{if(STATE.items.length>0&&document.getElementById('f-cliente').value)guardarBorradorSilencioso();},60000);}
 function clearAutoSave(){if(STATE.autoSaveTimer){clearInterval(STATE.autoSaveTimer);STATE.autoSaveTimer=null;}}
@@ -1228,7 +1450,10 @@ function aprobarCostos(id){
   const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
   if(!transicionValida(cots[idx].estado,'pendiente_jefe')){toast('Transición no permitida.');return;}
   cots[idx].estado='pendiente_jefe';cots[idx].fechaCostos=new Date().toISOString();
-  agregarHistorial(cots[idx],'Aprobado por costos');DB.set('cotizaciones',cots);toast('✓ Cotización enviada a Jefe');renderCostos();
+  agregarHistorial(cots[idx],'Aprobado por costos');DB.set('cotizaciones',cots);
+  notificar({roles:['jefe'],ico:'🔵',cotId:cots[idx].id,texto:cots[idx].folio+' ('+cots[idx].cliente+') lista para aprobación final'});
+  notificar({userId:cots[idx].vendedorId,ico:'✅',cotId:cots[idx].id,texto:'Costos aprobó la estructura de '+cots[idx].folio+' — pasa al jefe'});
+  toast('✓ Cotización enviada a Jefe');renderCostos();
 }
 function rechazarCostos(id){STATE.rechazoCotId=id;document.getElementById('rechazo-motivo').value='';openModal('modal-rechazo');}
 function confirmarRechazo(){
@@ -1237,6 +1462,7 @@ function confirmarRechazo(){
   if(!transicionValida(cots[idx].estado,'rechazada')){toast('No se puede rechazar en este estado.');return;}
   cots[idx].estado='rechazada';cots[idx].comentarioCostos=motivo;
   agregarHistorial(cots[idx],'Rechazado: '+motivo);DB.set('cotizaciones',cots);
+  notificar({userId:cots[idx].vendedorId,ico:'✗',cotId:cots[idx].id,texto:'Costos rechazó '+cots[idx].folio+': '+motivo.substring(0,80)+' — corrígela y reenvíala'});
   closeModal('modal-rechazo');toast('✗ Cotización rechazada');renderCostos();
 }
 
@@ -1480,6 +1706,7 @@ function confirmarJefeAprob(){
   cots[idx].fechaAprobacion=new Date().toISOString();
   agregarHistorial(cots[idx],'Aprobado por jefe. Precio: '+precio);
   DB.set('cotizaciones',cots);
+  notificar({userId:cots[idx].vendedorId,ico:'🎉',cotId:cots[idx].id,texto:'El jefe aprobó '+cots[idx].folio+' con precio '+(cots[idx].monedaFinal||'')+' '+fmtNum(precio)+' — ya puedes enviarla al cliente'});
   closeModal('modal-jefe-aprob');
   toast('✓ Cotización aprobada con precio '+fmtNum(precio));
   renderJefe();
@@ -1884,7 +2111,9 @@ function marcarComoEnviada(id){
   if(!transicionValida(cots[idx].estado,'enviada')){toast('Transición no válida.');return;}
   cots[idx].estado='enviada';cots[idx].fechaEnvio=new Date().toISOString();
   agregarHistorial(cots[idx],'Marcado como enviada al cliente');
-  DB.set('cotizaciones',cots);closeModal('modal-cot');toast('✓ Cotización marcada como enviada');renderMis();
+  DB.set('cotizaciones',cots);
+  notificar({roles:['jefe'],ico:'📤',cotId:cots[idx].id,texto:cots[idx].folio+' ('+cots[idx].cliente+') fue enviada al cliente'});
+  closeModal('modal-cot');toast('✓ Cotización marcada como enviada');renderMis();
 }
 
 function abrirModalEnviar(id){
@@ -1903,6 +2132,9 @@ function registrarRespuesta(id){
   if(!transicionValida(cots[idx].estado,resp)){toast('Transición no válida.');return;}
   cots[idx].estado=resp;cots[idx].fechaRespuesta=new Date().toISOString();
   agregarHistorial(cots[idx],'Cliente: '+resp);DB.set('cotizaciones',cots);
+  const icoResp=resp==='aceptada'?'🤝':resp==='rechazada'?'❌':'💬';
+  notificar({roles:['jefe'],ico:icoResp,cotId:cots[idx].id,texto:'Cliente '+(resp==='aceptada'?'ACEPTÓ':resp==='rechazada'?'rechazó':'quiere negociar')+' '+cots[idx].folio+' ('+cots[idx].cliente+')'});
+  notificar({userId:cots[idx].vendedorId,ico:icoResp,cotId:cots[idx].id,texto:'Respuesta del cliente en '+cots[idx].folio+': '+resp});
   closeModal('modal-enviar');toast('Respuesta registrada: '+resp);renderMis();
 }
 
@@ -2212,7 +2444,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.10',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.11',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
