@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.12 — Sistema de Cotizaciones</title>
+<title>TACRE v5.13 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.12</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.13</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -579,7 +579,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.12 — DESCUENTO DE NEGOCIACIÓN
+// TACRE v5.13 — EDICIÓN AUTORIZADA EN NEGOCIACIÓN
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -1350,6 +1350,9 @@ function getCotData(estado){
   const cots=DB.get('cotizaciones')||[];
   const existing=STATE.editId?cots.find(c=>c.id===STATE.editId):null;
   return{
+    // MEJ-38: preservar TODO lo del jefe/flujo (precioFinal, jefeCostos, notasJefe,
+    // descuentoMaxNeg, edicionAutorizada, fechas...) al editar; solo los campos de abajo se sobrescriben
+    ...(existing||{}),
     id:STATE.editId||generateUUID(),
     folio:STATE.editId?(existing?.folio||genFolio()):genFolio(),
     fecha:document.getElementById('f-fecha').value,
@@ -1377,7 +1380,12 @@ function guardarBorrador(){
   if(!document.getElementById('f-cliente').value){toast('⚠️ Ingresa el nombre del cliente');return;}
   // MEJ-34: en edición administrativa el guardado CONSERVA el estado original
   const cots=DB.get('cotizaciones')||[];const data=getCotData(STATE.editEstado||'borrador');
-  if(STATE.editEstado){
+  if(STATE.editEstado==='negociacion'){
+    // MEJ-38: edición autorizada en negociación — se consume la autorización (un solo uso) y se avisa al jefe
+    data.edicionAutorizada=false;
+    agregarHistorial(data,'Propuesta editada en negociación (con autorización)');
+    notificar({roles:['jefe'],ico:'✏️',cotId:data.id,texto:STATE.user.nombre+' editó la propuesta '+data.folio+' en negociación'});
+  }else if(STATE.editEstado){
     agregarHistorial(data,'Edición administrativa de la propuesta');
     if(data.vendedorId!==STATE.user.id)notificar({userId:data.vendedorId,ico:'🛠️',cotId:data.id,texto:STATE.user.nombre+' editó tu propuesta '+data.folio+' ('+STATE.editEstado.replace('_',' ')+')'});
   }
@@ -2031,11 +2039,13 @@ function abrirDetalleCot(id){
       <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');compartirWA('${id}')">📱 WhatsApp</button>
       <button class="btn btn-t btn-sm" onclick="closeModal('modal-cot');compartirEmail('${id}')">✉️ Correo</button>
       <button class="btn btn-ok btn-sm" onclick="closeModal('modal-cot');abrirDescuentoNeg('${id}')">🏷️ Aplicar Descuento y Cerrar</button>
+      ${cot.edicionAutorizada?`<button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">✏️ Editar Cotización</button>`:''}
       <button class="btn btn-p btn-sm" onclick="closeModal('modal-cot');abrirModalEnviar('${id}')">📋 Registrar Respuesta Cliente</button>`;
   }
-  // MEJ-37: el jefe/admin puede autorizar (o ajustar) el descuento de negociación
+  // MEJ-37/38: el jefe/admin autoriza descuento y/o edición de la propuesta en negociación
   if(cot.estado==='negociacion'&&(hasRole('jefe')||hasRole('admin'))){
-    footer.innerHTML+=`<button class="btn btn-out btn-sm" onclick="closeModal('modal-cot');abrirAutorizarDesc('${id}')">⚙️ Autorizar descuento</button>`;
+    footer.innerHTML+=`<button class="btn btn-out btn-sm" onclick="closeModal('modal-cot');abrirAutorizarDesc('${id}')">⚙️ Autorizar descuento</button>
+      <button class="btn btn-out btn-sm" onclick="toggleAutorizarEdicion('${id}')">${cot.edicionAutorizada?'🔒 Revocar edición':'✏️ Autorizar edición'}</button>`;
   }
   // FIX-18: PDF disponible en estados finales
   if((cot.estado==='aceptada'||cot.estado==='rechazada')&&(cot.vendedorId===STATE.user.id||hasRole('admin')||hasRole('jefe'))){
@@ -2168,6 +2178,17 @@ function registrarRespuesta(id){
 // precio final (y por lo tanto PDF, preliminar, WhatsApp, dashboard y utilidad, que
 // leen precioFinal) y cierra o reenvía. Se conserva precioAprobadoOriginal para auditar.
 function _precioBaseNeg(cot){return cot.precioAprobadoOriginal||cot.precioFinal||0;}
+// MEJ-38: el jefe/admin autoriza (o revoca) que se edite la propuesta completa en negociación
+function toggleAutorizarEdicion(id){
+  const cots=DB.get('cotizaciones');const idx=cots.findIndex(c=>c.id===id);if(idx<0)return;
+  const cot=cots[idx];
+  cot.edicionAutorizada=!cot.edicionAutorizada;
+  agregarHistorial(cot,cot.edicionAutorizada?'Jefe autorizó editar la propuesta en negociación':'Jefe revocó la edición de la propuesta');
+  DB.set('cotizaciones',cots);
+  if(cot.edicionAutorizada)notificar({userId:cot.vendedorId,ico:'✏️',cotId:id,texto:'El jefe autorizó editar '+cot.folio+' — ya puedes ajustar ítems, condiciones o agregar fotos'});
+  toast(cot.edicionAutorizada?'✏️ Edición autorizada — el vendedor ya puede editar':'🔒 Edición revocada');
+  abrirDetalleCot(id); // refresca los botones del detalle
+}
 function abrirAutorizarDesc(id){
   const cot=getCotById(id);if(!cot)return;
   document.getElementById('neg-title').textContent='⚙️ Autorizar descuento de negociación';
@@ -2292,8 +2313,10 @@ function cargarParaEditar(id){
   const propio=cot.vendedorId===STATE.user.id||hasRole('admin');
   const editaVendedor=(cot.estado==='borrador'||cot.estado==='rechazada')&&propio;
   const editaAdmin=(hasRole('admin')||hasRole('jefe'))&&['pendiente_costos','pendiente_jefe'].includes(cot.estado);
-  if(!editaVendedor&&!editaAdmin){toast('No puedes editar esta cotización en este estado.');return;}
-  STATE.editEstado=editaAdmin&&!editaVendedor?cot.estado:null;
+  // MEJ-38: edición autorizada por el jefe en negociación (vendedor dueño o jefe/admin)
+  const editaNegAutorizada=cot.estado==='negociacion'&&cot.edicionAutorizada&&(propio||hasRole('jefe')||hasRole('admin'));
+  if(!editaVendedor&&!editaAdmin&&!editaNegAutorizada){toast('No puedes editar esta cotización en este estado.');return;}
+  STATE.editEstado=(editaAdmin||editaNegAutorizada)&&!editaVendedor?cot.estado:null;
   STATE.editId=id;STATE.items=JSON.parse(JSON.stringify(cot.items||[]));
   STATE.params=JSON.parse(JSON.stringify(cot.params||[]));STATE.conds=JSON.parse(JSON.stringify(cot.conds||[]));
   STATE.moneda=cot.moneda||'MXN';STATE.sym=cot.sym||'$';
@@ -2562,7 +2585,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.12',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.13',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);

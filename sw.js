@@ -1,7 +1,7 @@
 // TACRE v5.7 — Service Worker (PWA)
 // Estrategia: app shell precacheado + stale-while-revalidate para todo GET
 // (incluye CDNs: jsPDF, autotable, SheetJS, Google Fonts → funciona offline tras la 1ª carga).
-const CACHE = 'tacre-v5.12';
+const CACHE = 'tacre-v5.13';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {
