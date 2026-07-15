@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.13 — Sistema de Cotizaciones</title>
+<title>TACRE v5.14 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.13</div>
+    <div class="login-sub">Sistema de Cotizaciones v5.14</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -400,6 +400,8 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
       <div><div class="panel-title">🏷️ Catálogo de Materiales</div><div class="panel-sub">Materiales disponibles para cotizaciones</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-out btn-sm" onclick="openImportExcel()">📥 Importar Excel</button>
+        <button class="btn btn-out btn-sm" onclick="exportarCatalogo()">📤 Exportar Excel</button>
+        <button class="btn btn-out btn-sm" onclick="homologarDuplicados()">🔗 Homologar duplicados</button>
         <button class="btn btn-p btn-sm" onclick="openMatModal()">+ Agregar Material</button>
       </div>
     </div>
@@ -520,7 +522,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     <div class="modal-title">📥 Importar Catálogo de Materiales</div>
     <p style="font-size:.85rem;color:var(--n5);margin-bottom:12px;">
       El archivo Excel debe tener columnas: <strong>Código, Descripción, Costo Unitario, Proveedor, Categoría, Stock</strong>.<br>
-      <span style="color:#dc2626;font-weight:700;">⚠️ Esto reemplazará todo el catálogo actual.</span>
+      <span style="color:var(--td);font-weight:700;">✓ Importación inteligente: actualiza los repetidos (si varían precios), agrega los nuevos y NO borra nada de lo que ya está. Puedes subir listas parciales.</span>
     </p>
     <div class="fg"><label>Archivo Excel (.xlsx)</label><input type="file" id="excel-file" accept=".xlsx,.xls" style="padding:8px;"></div>
     <div id="excel-preview" style="display:none;margin-top:10px;"></div>
@@ -579,7 +581,13 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.13 — EDICIÓN AUTORIZADA EN NEGOCIACIÓN
+// TACRE v5.14 — CATÁLOGO INTELIGENTE + ADJUNTOS
+// v5.14: FIX-39 modales ya no se cierran al seleccionar texto con el mouse;
+//        MEJ-40 import de catálogo con MERGE (actualiza repetidos por código o
+//        descripción, agrega nuevos, nunca borra) + exportar Excel + homologar
+//        duplicados; MEJ-41 reordenar ítems (▲▼); MEJ-42 adjuntos por proforma
+//        (cartas/fichas/imágenes, máx 1.5MB c/u, palanca "se envía al cliente",
+//        viajan con el PDF por WhatsApp; en correo se descargan)
 // v5.2: Bugs BUG-01..15 + MEJORAS 01,02,05
 // v5.3: FIX-16 flujo rechazada→costos · FIX-17 salida de negociación
 //       FIX-18 PDF en estados finales · FIX-19 logo corporativo estándar
@@ -1226,7 +1234,12 @@ function renderItems(){
   const c=document.getElementById('items-list');c.innerHTML='';
   STATE.items.forEach((it,idx)=>{
     const d=document.createElement('div');d.className='item-block';
-    d.innerHTML=`<div class="item-block-hdr"><span class="item-num">Ítem ${idx+1}</span><button class="btn-del" onclick="eliminarItem(${idx})">✕ Eliminar</button></div>
+    d.innerHTML=`<div class="item-block-hdr"><span class="item-num">Ítem ${idx+1}</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-out btn-sm" style="padding:3px 9px;" title="Subir" ${idx===0?'disabled style="padding:3px 9px;opacity:.3;"':''} onclick="moverItem(${idx},-1)">▲</button>
+        <button class="btn btn-out btn-sm" style="padding:3px 9px;" title="Bajar" ${idx===STATE.items.length-1?'disabled style="padding:3px 9px;opacity:.3;"':''} onclick="moverItem(${idx},1)">▼</button>
+        <button class="btn-del" onclick="eliminarItem(${idx})">✕ Eliminar</button>
+      </div></div>
       <div class="fg"><label>Descripción del Ítem</label><textarea rows="2" placeholder="Descripción completa del ítem..." onchange="STATE.items[${idx}].desc=this.value">${sanitize(it.desc||'')}</textarea></div>
       <div class="g3">
         <div class="fg"><label>Unidad</label><select onchange="STATE.items[${idx}].unidad=this.value">${['pza','m','m²','m³','kg','lt','hr','jgo','rollo','mt'].map(u=>`<option ${it.unidad===u?'selected':''}>${u}</option>`).join('')}</select></div>
@@ -1246,6 +1259,13 @@ function renderItems(){
   });
 }
 function eliminarItem(idx){STATE.items.splice(idx,1);renderItems();}
+// MEJ-41: reordenar ítems a gusto del vendedor (el orden se conserva en PDF y preliminar)
+function moverItem(idx,dir){
+  const j=idx+dir;
+  if(idx<0||idx>=STATE.items.length||j<0||j>=STATE.items.length)return;
+  [STATE.items[idx],STATE.items[j]]=[STATE.items[j],STATE.items[idx]];
+  renderItems();
+}
 
 // ── MATERIALES ──
 function agregarMaterial(idx){STATE.items[idx].materiales.push({matIdx:null,nombre:'',cantidad:1,costoUnit:0});renderMateriales(idx);}
@@ -2004,6 +2024,7 @@ function abrirDetalleCot(id){
       </div>`:''}
     </div>`).join('')}</div>
     <div style="margin-top:12px;">${infoVendedor}</div>
+    <div id="mc-adjuntos"></div>
     <div style="margin-top:12px;font-size:.78rem;color:var(--n5);background:var(--n1);padding:8px;border-radius:6px;">
       <div style="font-weight:700;color:var(--p);">Historial de cambios:</div>
       ${cot.historial?.length?cot.historial.map(h=>`<div>${fmtFecha(h.fecha.slice(0,10))} - ${sanitize(h.usuario)}: ${sanitize(h.cambio)}</div>`).join(''):'Sin historial'}
@@ -2015,6 +2036,7 @@ function abrirDetalleCot(id){
       ${['pendiente_costos','pendiente_jefe'].includes(cot.estado)&&(hasRole('admin')||hasRole('jefe'))?`<button class="btn btn-out btn-sm" onclick="closeModal('modal-cot');cargarParaEditar('${id}')">🛠️ Editar Propuesta</button>`:''}
     </div>`:''}`;
   if(showMats)(cot.items||[]).forEach((_,i)=>renderMatModal(cot.id,i,!canEditMats));
+  renderAdjuntosDetalle(cot.id); // MEJ-42
   const footer=document.getElementById('mc-footer');
   footer.innerHTML='<button class="btn btn-out btn-sm" onclick="closeModal(\'modal-cot\')">Cerrar</button>';
   // BUG-04 FIX: separar botones según estado aprobada vs enviada
@@ -2277,6 +2299,76 @@ function aplicarDescuentoNeg(id){
   renderMis();
 }
 
+// ── MEJ-42: ADJUNTOS DE LA PROFORMA ──
+// Cada cotización guarda sus documentos (carta de presentación, fichas técnicas, imágenes).
+// Se marcan cuáles se envían al cliente junto al PDF. Límite 1.5 MB por archivo porque hoy
+// viven en localStorage (~5 MB por navegador); la solución definitiva es Firebase Storage (v6.0).
+const ADJ_MAX=1.5*1024*1024;
+function _puedeAdjuntar(cot){return cot.vendedorId===STATE.user.id||hasRole('jefe')||hasRole('admin');}
+function renderAdjuntosDetalle(cotId){
+  const cot=getCotById(cotId);const c=document.getElementById('mc-adjuntos');if(!cot||!c)return;
+  const puede=_puedeAdjuntar(cot);
+  const adjs=cot.adjuntos||[];
+  c.innerHTML=`<div class="aprob-box" style="margin-bottom:10px;">
+    <h4>📎 Documentos de la Proforma</h4>
+    <div style="font-size:.72rem;color:var(--n5);margin-bottom:8px;">Cartas, fichas técnicas, imágenes… Marca cuáles se envían al cliente junto al PDF (máx. 1.5 MB c/u).</div>
+    ${adjs.length?adjs.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(90,45,130,.08);font-size:.8rem;flex-wrap:wrap;">
+      <span>${a.tipo&&a.tipo.startsWith('image')?'🖼️':'📄'}</span>
+      <span style="flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sanitize(a.nombre)}">${sanitize(a.nombre)} <span style="color:var(--n5);font-size:.68rem;">(${Math.round((a.size||0)/1024)} KB · ${sanitize(a.por||'')})</span></span>
+      ${puede?`<button class="jc-toggle ${a.enviar?'active':''}" style="font-size:.68rem;" onclick="toggleEnviarAdjunto('${cotId}',${i})">${a.enviar?'✉️ Se envía':'🔇 No se envía'}</button>`:(a.enviar?'<span class="chip">✉️ se envía</span>':'')}
+      <button class="btn btn-out btn-sm" style="padding:3px 8px;font-size:.68rem;" onclick="descargarAdjunto('${cotId}',${i})">⬇️</button>
+      ${puede?`<button class="btn-del" style="padding:3px 8px;" onclick="borrarAdjunto('${cotId}',${i})">✕</button>`:''}
+    </div>`).join(''):'<div style="font-size:.78rem;color:var(--n5);">Sin documentos adjuntos</div>'}
+    ${puede?`<div style="margin-top:10px;"><input type="file" id="adj-file-inp" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" style="display:none" onchange="subirAdjunto('${cotId}',this)">
+      <button class="btn btn-t btn-sm" onclick="document.getElementById('adj-file-inp').click()">📎 Adjuntar documento</button></div>`:''}
+  </div>`;
+}
+function subirAdjunto(cotId,input){
+  const f=input.files&&input.files[0];input.value='';if(!f)return;
+  if(f.size>ADJ_MAX){toast('⚠️ Máximo 1.5 MB por archivo (este pesa '+Math.round(f.size/1024)+' KB). Comprímelo, o en la fase de nube (v6.0) subirán sin límite.');return;}
+  const r=new FileReader();
+  r.onload=ev=>{
+    const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot)return;
+    if(!cot.adjuntos)cot.adjuntos=[];
+    cot.adjuntos.push({id:generateUUID(),nombre:f.name,tipo:f.type,size:f.size,data:ev.target.result,enviar:true,fecha:new Date().toISOString(),por:STATE.user.nombre});
+    agregarHistorial(cot,'Adjuntó documento: '+f.name);
+    try{DB.set('cotizaciones',cots);}
+    catch(e){cot.adjuntos.pop();toast('⛔ Sin espacio en este navegador: borra adjuntos viejos o comprime el archivo.');return;}
+    toast('📎 '+f.name+' adjuntado');renderAdjuntosDetalle(cotId);
+  };
+  r.readAsDataURL(f);
+}
+function toggleEnviarAdjunto(cotId,i){
+  const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot||!cot.adjuntos||!cot.adjuntos[i])return;
+  cot.adjuntos[i].enviar=!cot.adjuntos[i].enviar;DB.set('cotizaciones',cots);renderAdjuntosDetalle(cotId);
+}
+function borrarAdjunto(cotId,i){
+  const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot||!cot.adjuntos||!cot.adjuntos[i])return;
+  if(!confirm('¿Eliminar "'+cot.adjuntos[i].nombre+'"?'))return;
+  const rm=cot.adjuntos.splice(i,1)[0];
+  agregarHistorial(cot,'Eliminó adjunto: '+(rm?rm.nombre:''));
+  DB.set('cotizaciones',cots);renderAdjuntosDetalle(cotId);
+}
+function descargarAdjunto(cotId,i){
+  const cot=getCotById(cotId);const a=cot&&cot.adjuntos&&cot.adjuntos[i];if(!a)return;
+  const el=document.createElement('a');el.href=a.data;el.download=a.nombre;el.click();
+}
+// Convierte los adjuntos marcados "se envía" en Files para la hoja de compartir nativa
+function _adjuntosParaEnviar(cot){
+  return (cot.adjuntos||[]).filter(a=>a.enviar&&a.data).map(a=>{
+    try{
+      const bin=atob(a.data.split(',')[1]);const arr=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      return new File([arr],a.nombre,{type:a.tipo||'application/octet-stream'});
+    }catch(e){return null;}
+  }).filter(Boolean);
+}
+function _descargarAdjuntosMarcados(cot){
+  (cot.adjuntos||[]).filter(a=>a.enviar&&a.data).forEach((a,k)=>{
+    setTimeout(()=>{const el=document.createElement('a');el.href=a.data;el.download=a.nombre;el.click();},250*(k+1));
+  });
+}
+
 // ── COPIAR COTIZACIÓN ──
 function openCopiarModal(){document.getElementById('cp-folio').value='';document.getElementById('cp-resultado').innerHTML='';openModal('modal-copiar');}
 function buscarParaCopiar(){
@@ -2470,17 +2562,96 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(!data.length){toast('El archivo está vacío');return;}
       STATE._excelData=data.map(row=>({codigo:String(row['Código']||row['codigo']||''),descripcion:String(row['Descripción']||row['descripcion']||''),costoUnitario:parseFloat(row['Costo Unitario']||row['costoUnitario']||0)||0,proveedor:String(row['Proveedor']||row['proveedor']||''),categoria:String(row['Categoría']||row['categoria']||''),stock:parseInt(row['Stock']||0)||0}));
       const prev=document.getElementById('excel-preview');prev.style.display='block';
-      prev.innerHTML=`<div style="background:var(--tl);border-radius:8px;padding:10px;font-size:.82rem;">✓ ${STATE._excelData.length} materiales detectados · Primeros 3: ${STATE._excelData.slice(0,3).map(m=>sanitize(m.descripcion)).join(', ')}</div>`;
+      // MEJ-40: preview con el desglose del merge ANTES de confirmar
+      const plan=_analizarImport();
+      prev.innerHTML=`<div style="background:var(--tl);border-radius:8px;padding:10px;font-size:.82rem;">
+        ✓ ${STATE._excelData.length} filas detectadas<br>
+        🔄 <strong>${plan.actualizar.length}</strong> se actualizarán (precio/proveedor cambió) ·
+        ➕ <strong>${plan.nuevos.length}</strong> nuevos ·
+        ⏸️ <strong>${plan.sinCambio}</strong> sin cambios<br>
+        <span style="color:var(--n5);">El resto del catálogo queda intacto.</span>
+        ${plan.actualizar.length?`<div style="margin-top:6px;font-size:.75rem;color:var(--n7);">Ej.: ${plan.actualizar.slice(0,3).map(a=>sanitize(a.objetivo.descripcion)+' $'+fmtNum(a.objetivo.costoUnitario)+' → $'+fmtNum(a.row.costoUnitario||a.objetivo.costoUnitario)).join(' · ')}</div>`:''}
+      </div>`;
       document.getElementById('btn-import-confirm').style.display='inline-block';
     };r.readAsArrayBuffer(f);
   };
 });
+// MEJ-40: normaliza descripciones para comparar productos "idénticos" (homologación)
+function _normDesc(s){return String(s||'').toUpperCase().replace(/\s+/g,' ').trim();}
+function _nextMatCod(mats){
+  let max=0;mats.forEach(m=>{const n=parseInt(String(m.codigo||'').replace(/\D/g,''),10);if(n>max)max=n;});
+  return 'MAT'+String(max+1).padStart(4,'0');
+}
+// MEJ-40: analiza el excel contra el catálogo SIN aplicar — para el preview y el import
+function _analizarImport(){
+  const mats=DB.get('materiales')||[];
+  const porCod=new Map(mats.map(m=>[String(m.codigo||'').trim().toUpperCase(),m]));
+  const porDesc=new Map(mats.map(m=>[_normDesc(m.descripcion),m]));
+  const plan={actualizar:[],nuevos:[],sinCambio:0};
+  (STATE._excelData||[]).forEach(row=>{
+    const cod=String(row.codigo||'').trim().toUpperCase();
+    const objetivo=(cod&&porCod.get(cod))||porDesc.get(_normDesc(row.descripcion))||null;
+    if(objetivo){
+      const cambia=(row.costoUnitario>0&&row.costoUnitario!==objetivo.costoUnitario)
+        ||(row.proveedor&&row.proveedor!==objetivo.proveedor)
+        ||(row.categoria&&row.categoria!==objetivo.categoria);
+      if(cambia)plan.actualizar.push({objetivo,row});else plan.sinCambio++;
+    }else if(_normDesc(row.descripcion)){
+      plan.nuevos.push(row);
+    }
+  });
+  return plan;
+}
+// MEJ-40: importación INTELIGENTE — actualiza repetidos (por código o descripción),
+// agrega nuevos y NUNCA borra lo que ya está (listas parciales bienvenidas)
 function confirmarImportExcel(){
   if(!STATE._excelData?.length){toast('Sin datos para importar');return;}
-  if(!confirm('¿Reemplazar todo el catálogo actual?'))return;
-  DB.set('materiales',STATE._excelData);closeModal('modal-excel');
-  toast('✓ Catálogo importado: '+STATE._excelData.length+' materiales');
+  const plan=_analizarImport();
+  if(!plan.actualizar.length&&!plan.nuevos.length){toast('Nada que importar: todo ya está igual en el catálogo');closeModal('modal-excel');return;}
+  if(!confirm('¿Aplicar? '+plan.actualizar.length+' se actualizarán · '+plan.nuevos.length+' nuevos · el resto del catálogo queda intacto.'))return;
+  const mats=DB.get('materiales')||[];
+  plan.actualizar.forEach(({objetivo,row})=>{
+    const m=mats.find(x=>x.codigo===objetivo.codigo&&_normDesc(x.descripcion)===_normDesc(objetivo.descripcion))||mats.find(x=>x.codigo===objetivo.codigo);
+    if(!m)return;
+    if(row.costoUnitario>0)m.costoUnitario=row.costoUnitario;
+    if(row.proveedor)m.proveedor=row.proveedor;
+    if(row.categoria)m.categoria=row.categoria;
+  });
+  plan.nuevos.forEach(row=>{
+    mats.push({codigo:row.codigo||_nextMatCod(mats),descripcion:row.descripcion,costoUnitario:row.costoUnitario||0,proveedor:row.proveedor||'',categoria:row.categoria||'General',stock:row.stock||0});
+  });
+  DB.set('materiales',mats);closeModal('modal-excel');
+  toast('✓ Catálogo: '+plan.actualizar.length+' actualizados · '+plan.nuevos.length+' nuevos · '+plan.sinCambio+' sin cambios');
   if(document.getElementById('panel-catalogo').classList.contains('active'))renderCatalogo();
+}
+// MEJ-40: exportar el catálogo completo a Excel (mismas columnas que el import)
+function exportarCatalogo(){
+  const mats=DB.get('materiales')||[];
+  if(!mats.length){toast('El catálogo está vacío');return;}
+  const rows=mats.map(m=>({'Código':m.codigo,'Descripción':m.descripcion,'Costo Unitario':m.costoUnitario,'Proveedor':m.proveedor,'Categoría':m.categoria,'Stock':m.stock||0}));
+  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Catalogo');
+  XLSX.writeFile(wb,'tacre_catalogo_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('📤 Catálogo exportado: '+mats.length+' materiales');
+}
+// MEJ-40: homologar duplicados — fusiona materiales con descripción idéntica
+// (conserva el de código menor; las cotizaciones no se afectan: guardan su snapshot)
+function homologarDuplicados(){
+  const mats=DB.get('materiales')||[];
+  const grupos=new Map();
+  mats.forEach(m=>{const k=_normDesc(m.descripcion);if(!k)return;(grupos.get(k)||grupos.set(k,[]).get(k)).push(m);});
+  const dups=[...grupos.values()].filter(g=>g.length>1);
+  if(!dups.length){toast('✓ Sin duplicados: el catálogo ya está homologado');return;}
+  const aBorrar=dups.reduce((s,g)=>s+g.length-1,0);
+  if(!confirm('Se encontraron '+dups.length+' productos repetidos ('+aBorrar+' entradas de más). ¿Fusionar conservando el código menor de cada uno?'))return;
+  const conservar=new Set();
+  dups.forEach(g=>{g.sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));conservar.add(g[0]);});
+  const resultado=mats.filter(m=>{
+    const k=_normDesc(m.descripcion);const g=grupos.get(k);
+    return !g||g.length===1||conservar.has(m);
+  });
+  DB.set('materiales',resultado);renderCatalogo();
+  toast('🔗 Homologado: '+aBorrar+' duplicados fusionados');
 }
 
 // ── PDF ──
@@ -2585,7 +2756,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.13',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v5.14',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
@@ -2642,10 +2813,14 @@ async function compartirWA(id){
   const copiado=await copyText(msg);
   if(pdfData){
     const file=new File([pdfData.blob],pdfData.filename,{type:'application/pdf'});
-    if(navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file],title:'Cotización TACRE',text:msg});return;}catch(e){}}
+    // MEJ-42: los adjuntos marcados "se envía" viajan junto al PDF en la hoja nativa
+    const files=[file,..._adjuntosParaEnviar(cot)];
+    if(navigator.canShare?.({files})){try{await navigator.share({files,title:'Cotización TACRE',text:msg});return;}catch(e){}}
     const url=URL.createObjectURL(pdfData.blob);const a=document.createElement('a');a.href=url;a.download=pdfData.filename;a.click();URL.revokeObjectURL(url);
+    _descargarAdjuntosMarcados(cot); // fallback: también se descargan los adjuntos
     setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'),700);
-    toast('📄 PDF descargado'+(copiado?' · 📋 Texto copiado':''));
+    const nAdj=(cot.adjuntos||[]).filter(x=>x.enviar).length;
+    toast('📄 PDF'+(nAdj?' + '+nAdj+' adjunto(s)':'')+' descargado'+(copiado?' · 📋 Texto copiado':''));
   }else{
     window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
     toast(copiado?'📋 Texto copiado al portapapeles':'Abriendo WhatsApp...');
@@ -2661,8 +2836,10 @@ async function compartirEmail(id){
   const copiado=await copyText(msg);
   if(pdfData){
     const url=URL.createObjectURL(pdfData.blob);const a=document.createElement('a');a.href=url;a.download=pdfData.filename;a.click();URL.revokeObjectURL(url);
+    _descargarAdjuntosMarcados(cot); // MEJ-42: mailto no adjunta — se descargan para adjuntar a mano
     setTimeout(()=>window.location.href=`mailto:?subject=${asunto}&body=${cuerpo}`,700);
-    toast('📄 PDF descargado'+(copiado?' · 📋 Texto copiado':'')+' · ✉️ Abriendo correo...');
+    const nAdj=(cot.adjuntos||[]).filter(x=>x.enviar).length;
+    toast('📄 PDF'+(nAdj?' + '+nAdj+' adjunto(s)':'')+' descargado'+(copiado?' · 📋 Texto copiado':'')+' · ✉️ Adjúntalos al correo');
   }else{
     window.location.href=`mailto:?subject=${asunto}&body=${cuerpo}`;
     toast('✉️ Abriendo cliente de correo...');
@@ -2674,7 +2851,14 @@ async function compartirEmail(id){
 function openModal(id){const m=document.getElementById(id);if(!m)return;m.classList.remove('closing');m.classList.add('open');}
 function closeModal(id){const m=document.getElementById(id);if(!m||!m.classList.contains('open')||m.classList.contains('closing'))return;m.classList.add('closing');setTimeout(()=>m.classList.remove('open','closing'),210);}
 // FIX: check e.target===m so native select dropdowns don't trigger backdrop close
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id);}));
+// FIX-39: al seleccionar texto con el mouse (arrastrar desde dentro y soltar en el fondo)
+// el navegador dispara 'click' en el fondo y cerraba el modal. Ahora solo cierra si el
+// gesto EMPEZÓ y TERMINÓ en el fondo.
+document.querySelectorAll('.modal').forEach(m=>{
+  let downEnFondo=false;
+  m.addEventListener('pointerdown',e=>{downEnFondo=(e.target===m);});
+  m.addEventListener('click',e=>{if(e.target===m&&downEnFondo)closeModal(m.id);});
+});
 let _toastTimer;
 // MEJ-20: toast animado por clase .show (desliza + fade, ver CSS)
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='';t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),3500);}
