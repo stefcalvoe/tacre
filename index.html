@@ -672,7 +672,7 @@ const NUBE_COLS={cotizaciones:'id',usuarios:'id',materiales:'codigo',notifs:'id'
 // (admin@ jefe@ vendedor@ costos@ tacre.app). El rol se toma de aquí en el primer
 // arranque en la nube; luego el admin los edita desde la pestaña Usuarios.
 const PROD_USERS=[
-  {id:1,nombre:'Administrador',user:'admin',hash:'',roles:['admin','jefe','vendedor','costos'],activo:true},
+  {id:1,nombre:'Super Admin',user:'admin',hash:'',roles:['superadmin','admin','jefe','vendedor','costos'],activo:true},
   {id:4,nombre:'Jefe',user:'jefe',hash:'',roles:['jefe'],activo:true},
   {id:2,nombre:'Vendedor',user:'vendedor',hash:'',roles:['vendedor'],activo:true},
   {id:3,nombre:'Costos',user:'costos',hash:'',roles:['costos'],activo:true}
@@ -715,6 +715,8 @@ const Nube={
     if(!u)throw new Error('Tu cuenta existe pero no tiene perfil asignado. Pídele al administrador que te dé de alta en Usuarios.');
     if(!u.activo)throw new Error('Usuario desactivado');
     u.uid=cred.user.uid; // vincular cuenta nube ↔ perfil real
+    // MEJ-45: el master (id 1) siempre es super admin — repara la ficha ya sembrada sin super
+    if(u.id===1&&!(u.roles||[]).includes('superadmin'))u.roles=['superadmin',...(u.roles||[])];
     const limpio=us.filter(x=>x===u||!(esBasura(x)&&mio(x)));
     DB.set('usuarios',limpio); // guarda el vínculo y borra la ficha basura de la nube
     return u;
@@ -818,7 +820,7 @@ const DB={
     if(!DB.get('cotizaciones'))DB.set('cotizaciones',[]);
     if(!DB.get('usuarios')){
       const demo=[
-        {id:1,nombre:'Administrador TACRE',user:'admin',hash:'',roles:['admin','jefe','vendedor','costos'],activo:true},
+        {id:1,nombre:'Administrador TACRE',user:'admin',hash:'',roles:['superadmin','admin','jefe','vendedor','costos'],activo:true},
         {id:2,nombre:'Ana Vendedora',user:'ana',hash:'',roles:['vendedor'],activo:true},
         {id:3,nombre:'Carlos Costos',user:'carlos',hash:'',roles:['costos'],activo:true},
         {id:4,nombre:'Juan Jefe',user:'jefe',hash:'',roles:['jefe'],activo:true},
@@ -2640,29 +2642,35 @@ function renderUsers(){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="font-weight:600;">${sanitize(u.nombre)}</td><td><code>${sanitize(u.user)}</code></td>
       <td>${u.roles.map(r=>`<span class="r-badge">${r}</span>`).join('')}</td>
-      <td>${u.activo?'<span style="color:#16a34a;font-weight:700;">✓ Activo</span>':'<span style="color:#dc2626;font-weight:700;">✗ Inactivo</span>'}</td>
+      <td>${u.activo?'<span style="color:#16a34a;font-weight:700;">✓ Activo</span>':'<span style="color:#dc2626;font-weight:700;">✗ Inactivo</span>'}${esSuper(u)?' <span class="r-badge" style="background:#fde68a;color:#92400e;">👑 super</span>':''}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${(esSuper(u)&&!soySuper())?'<span style="color:var(--n5);font-size:.75rem;">🔒 Protegido</span>':`
         <button class="btn-del" onclick="editarUsuario(${u.id})">Editar</button>
-        <button class="btn-del" style="${u.activo?'':'background:rgba(34,197,94,.1);color:#15803d;border-color:rgba(34,197,94,.3);'}" onclick="toggleActivoUsuario(${u.id})">${u.activo?'Desactivar':'Activar'}</button>
+        <button class="btn-del" style="${u.activo?'':'background:rgba(34,197,94,.1);color:#15803d;border-color:rgba(34,197,94,.3);'}" onclick="toggleActivoUsuario(${u.id})">${u.activo?'Desactivar':'Activar'}</button>`}
       </td>`;
     tbody.appendChild(tr);
   });
 }
 const ALL_ROLES=['admin','vendedor','costos','jefe'];
+// MEJ-45: superadmin (dueño). Solo un superadmin gestiona superadmins.
+function esSuper(u){return !!(u&&u.roles&&u.roles.includes('superadmin'));}
+function soySuper(){return hasRole('superadmin');}
 function openUserModal(){document.getElementById('mu-id').value='';document.getElementById('mu-nombre').value='';document.getElementById('mu-user').value='';document.getElementById('mu-pass').value='';document.getElementById('mu-title').textContent='Nuevo Usuario';renderRoleChkbx([]);openModal('modal-user');}
 // MEJORA-04: alternar estado activo/inactivo del usuario
 function toggleActivoUsuario(id){
   const users=DB.get('usuarios');const idx=users.findIndex(u=>u.id===id);if(idx<0)return;
   if(users[idx].user===STATE.user.user){toast('⚠️ No puedes desactivar tu propia cuenta');return;}
+  if(esSuper(users[idx])&&!soySuper()){toast('🔒 No puedes desactivar a un super admin');return;} // MEJ-45
   users[idx].activo=!users[idx].activo;
   DB.set('usuarios',users);renderUsers();toast(users[idx].activo?'✓ Usuario activado':'Usuario desactivado');
 }
-function editarUsuario(id){const u=(DB.get('usuarios')||[]).find(x=>x.id===id);if(!u)return;document.getElementById('mu-id').value=id;document.getElementById('mu-nombre').value=u.nombre;document.getElementById('mu-user').value=u.user;document.getElementById('mu-pass').value='';document.getElementById('mu-title').textContent='Editar Usuario';renderRoleChkbx(u.roles);openModal('modal-user');}
-function renderRoleChkbx(sel){const c=document.getElementById('mu-roles');c.innerHTML=ALL_ROLES.map(r=>`<label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer;background:var(--n1);padding:5px 10px;border-radius:12px;"><input type="checkbox" value="${r}" ${sel.includes(r)?'checked':''}> ${r}</label>`).join('');}
+function editarUsuario(id){const u=(DB.get('usuarios')||[]).find(x=>x.id===id);if(!u)return;if(esSuper(u)&&!soySuper()){toast('🔒 Solo un super admin puede editar a otro super admin');return;}document.getElementById('mu-id').value=id;document.getElementById('mu-nombre').value=u.nombre;document.getElementById('mu-user').value=u.user;document.getElementById('mu-pass').value='';document.getElementById('mu-title').textContent='Editar Usuario';renderRoleChkbx(u.roles);openModal('modal-user');}
+function renderRoleChkbx(sel){const c=document.getElementById('mu-roles');const roles=soySuper()?['superadmin',...ALL_ROLES]:ALL_ROLES;c.innerHTML=roles.map(r=>`<label style="display:flex;align-items:center;gap:4px;font-size:.82rem;cursor:pointer;background:${r==='superadmin'?'#fef3c7':'var(--n1)'};padding:5px 10px;border-radius:12px;"><input type="checkbox" value="${r}" ${sel.includes(r)?'checked':''}> ${r==='superadmin'?'👑 superadmin':r}</label>`).join('');}
 // BUG-07 + BUG-08 FIX: validación de contraseña y no propagar pass vacío al objeto
 async function guardarUsuario(){
   const id=document.getElementById('mu-id').value;
-  const roles=[...document.querySelectorAll('#mu-roles input:checked')].map(i=>i.value);
+  let roles=[...document.querySelectorAll('#mu-roles input:checked')].map(i=>i.value);
+  if(!soySuper())roles=roles.filter(r=>r!=='superadmin'); // MEJ-45: solo un super otorga super
   if(!roles.length){toast('Selecciona al menos un rol');return;}
   const nombre=document.getElementById('mu-nombre').value.trim();
   const user=document.getElementById('mu-user').value.trim();
@@ -2671,6 +2679,8 @@ async function guardarUsuario(){
   const users=DB.get('usuarios');
   if(id){
     const idx=users.findIndex(u=>u.id==id);
+    if(esSuper(users[idx])&&!soySuper()){toast('🔒 Solo un super admin puede editar a un super admin');return;} // MEJ-45
+    if(users[idx].roles.includes('superadmin')&&!roles.includes('superadmin')&&!soySuper())roles=[...roles,'superadmin']; // no dejar que un no-super quite el super
     const updates={nombre,user,roles,activo:users[idx].activo??true};
     if(pass)updates.hash=await hashPassword(pass); // solo actualiza hash si se ingresó nueva clave
     users[idx]={...users[idx],...updates};
