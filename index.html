@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v5.14 — Sistema de Cotizaciones</title>
+<title>TACRE v6.0 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v5.14</div>
+    <div class="login-sub">Sistema de Cotizaciones v6.0</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -581,7 +581,12 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
 
 <script>
 // ═══════════════════════════════════════════════
-// TACRE v5.14 — CATÁLOGO INTELIGENTE + ADJUNTOS
+// TACRE v6.0 — MODO NUBE (FIREBASE)
+// v6.0: MEJ-43 motor de sincronización Firestore+Auth: DB.set escribe local Y nube;
+//       listeners en tiempo real actualizan localStorage y refrescan la UI; login por
+//       Firebase Auth (usuario→usuario@tacre.app); migración inicial automática si la
+//       nube está vacía; docs por registro (colecciones en NUBE_COLS, config doc único,
+//       sesion nunca se sube); INERTE con FIREBASE_CONFIG=null → modo local intacto
 // v5.14: FIX-39 modales ya no se cierran al seleccionar texto con el mouse;
 //        MEJ-40 import de catálogo con MERGE (actualiza repetidos por código o
 //        descripción, agrega nuevos, nunca borra) + exportar Excel + homologar
@@ -643,10 +648,142 @@ async function copyText(txt){
   }catch(e){return false;}
 }
 
+// ═══════════════════════════════════════════════
+// v6.0 MEJ-43 — MODO NUBE (Firebase Firestore + Auth)
+// Pega aquí el firebaseConfig de tu proyecto (Consola Firebase → ⚙️ Configuración
+// del proyecto → Tus apps → SDK de Firebase → Configuración). Ese objeto es público
+// por diseño: la seguridad la ponen las Security Rules del servidor, no el secreto.
+// Con null la app funciona 100% LOCAL (localStorage) exactamente como hasta hoy.
+// ═══════════════════════════════════════════════
+const FIREBASE_CONFIG=null;
+/* Ejemplo:
+const FIREBASE_CONFIG={
+  apiKey:"AIza...", authDomain:"tacre-cotiza.firebaseapp.com", projectId:"tacre-cotiza",
+  storageBucket:"tacre-cotiza.appspot.com", messagingSenderId:"123...", appId:"1:123..."
+}; */
+
+// Colecciones sincronizadas: clave local → campo identificador del registro.
+// 'config' va como documento único; 'sesion' NUNCA se sube (es por-dispositivo).
+const NUBE_COLS={cotizaciones:'id',usuarios:'id',materiales:'codigo',notifs:'id',mensajes:'id'};
+
+const Nube={
+  on:false, auth:null, fs:null, _prev:{}, _aplicando:false, _unsubs:[], _escuchando:false, _esperas:{},
+  async init(){
+    if(!FIREBASE_CONFIG)return false;
+    try{
+      const base='https://www.gstatic.com/firebasejs/10.12.2/';
+      for(const f of ['firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js']){
+        await new Promise((res,rej)=>{const s=document.createElement('script');s.src=base+f;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+f));document.head.appendChild(s);});
+      }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      this.auth=firebase.auth();this.fs=firebase.firestore();
+      try{await this.fs.enablePersistence({synchronizeTabs:true});}catch(e){/* multi-pestaña: ok */}
+      // esperar a que Firebase restaure (o no) la sesión persistida
+      await new Promise(res=>{const off=this.auth.onAuthStateChanged(()=>{off();res();});});
+      this.on=true;
+      Object.keys(NUBE_COLS).forEach(k=>this._prev[k]=DB.get(k)||[]);
+      return true;
+    }catch(e){console.warn('Nube.init falló — la app sigue en modo local:',e);this.on=false;return false;}
+  },
+  // email técnico: los usuarios escriben "ana"; Firebase requiere formato email
+  emailDe(user){return user.includes('@')?user:(user.toLowerCase()+'@tacre.app');},
+  async login(user,pass){
+    const cred=await this.auth.signInWithEmailAndPassword(this.emailDe(user),pass);
+    this.arrancar();
+    await this.esperar('usuarios');
+    const us=DB.get('usuarios')||[];
+    let u=us.find(x=>x.uid===cred.user.uid)||us.find(x=>x.user===user&&x.activo);
+    if(u&&!u.uid){u.uid=cred.user.uid;DB.set('usuarios',us);} // vincular cuenta nube ↔ usuario local
+    if(!u){ // primer acceso en un despliegue nuevo: crear ficha básica (roles los ajusta admin)
+      u={id:Date.now(),nombre:user,user,hash:'',roles:['vendedor'],activo:true,uid:cred.user.uid};
+      us.push(u);DB.set('usuarios',us);
+    }
+    if(!u.activo)throw new Error('Usuario desactivado');
+    return u;
+  },
+  // reanudar sesión persistida por Firebase (equivalente nube de restaurarSesion)
+  async reanudar(){
+    if(!this.on||!this.auth.currentUser)return null;
+    this.arrancar();
+    await this.esperar('usuarios');
+    const us=DB.get('usuarios')||[];
+    const u=us.find(x=>x.uid===this.auth.currentUser.uid&&x.activo)
+      ||us.find(x=>this.emailDe(x.user||'')===(this.auth.currentUser.email||'')&&x.activo);
+    return u||null;
+  },
+  arrancar(){ // listeners en tiempo real (requieren sesión iniciada por las Security Rules)
+    if(this._escuchando||!this.on)return;this._escuchando=true;
+    Object.entries(NUBE_COLS).forEach(([k,idField])=>{
+      const un=this.fs.collection(k).onSnapshot(snap=>{
+        const arr=snap.docs.map(d=>d.data());
+        if(k==='notifs'||k==='mensajes'||k==='cotizaciones')arr.sort((a,b)=>String(a.fecha||a.fechaCreacion||'').localeCompare(String(b.fecha||b.fechaCreacion||'')));
+        this._prev[k]=JSON.parse(JSON.stringify(arr));
+        this._aplicando=true;localStorage.setItem('tacre_'+k,JSON.stringify(arr));this._aplicando=false;
+        if(this._esperas[k]){this._esperas[k]();delete this._esperas[k];}
+        _refrescoRemoto(k);
+      },e=>console.warn('Nube escucha',k,e));
+      this._unsubs.push(un);
+    });
+    const unc=this.fs.collection('config').doc('main').onSnapshot(d=>{
+      if(d.exists){this._aplicando=true;localStorage.setItem('tacre_config',JSON.stringify(d.data()));this._aplicando=false;}
+    },e=>console.warn('Nube config',e));
+    this._unsubs.push(unc);
+    this.migrarSiNubeVacia();
+  },
+  esperar(k){return new Promise(res=>{this._esperas[k]=res;setTimeout(res,6000);});}, // 1ª carga o timeout
+  push(k,vNuevo){ // diff por registro → solo sube lo que cambió (y borra lo eliminado)
+    if(!this.on||this._aplicando)return;
+    if(k==='config'){this.fs.collection('config').doc('main').set(JSON.parse(JSON.stringify(vNuevo))).catch(e=>console.warn('Nube cfg',e));return;}
+    const idField=NUBE_COLS[k];if(!idField||!Array.isArray(vNuevo))return;
+    const prev=this._prev[k]||[];
+    const prevMap=new Map(prev.map(r=>[String(r[idField]),JSON.stringify(r)]));
+    const vistos=new Set();const ops=[];
+    vNuevo.forEach(r=>{
+      const id=String(r[idField]);vistos.add(id);
+      const js=JSON.stringify(r);
+      if(prevMap.get(id)!==js){
+        if(js.length>900000){toast('⚠️ '+k+' '+id+' supera 0.9 MB — no se sincroniza (usa adjuntos más ligeros)');return;}
+        ops.push({t:'set',id,data:JSON.parse(js)});
+      }
+    });
+    prev.forEach(r=>{const id=String(r[idField]);if(!vistos.has(id))ops.push({t:'del',id});});
+    this._prev[k]=JSON.parse(JSON.stringify(vNuevo));
+    for(let i=0;i<ops.length;i+=400){ // Firestore: máx 500 ops por batch
+      const batch=this.fs.batch();
+      ops.slice(i,i+400).forEach(o=>{const ref=this.fs.collection(k).doc(o.id);o.t==='set'?batch.set(ref,o.data):batch.delete(ref);});
+      batch.commit().catch(e=>console.warn('Nube push',k,e));
+    }
+  },
+  async migrarSiNubeVacia(){ // primera vez: sube los datos locales existentes
+    try{
+      const [c,u]=await Promise.all([this.fs.collection('cotizaciones').limit(1).get(),this.fs.collection('usuarios').limit(1).get()]);
+      if(!c.empty||!u.empty)return;
+      Object.keys(NUBE_COLS).forEach(k=>{const v=DB.get(k);if(Array.isArray(v)&&v.length){this._prev[k]=[];this.push(k,v);}});
+      const cfg=DB.get('config');if(cfg)this.fs.collection('config').doc('main').set(cfg);
+      toast('☁️ Migración inicial: datos locales subidos a la nube');
+    }catch(e){console.warn('Nube migración',e);}
+  },
+  logout(){try{if(this.on)this.auth.signOut();}catch(e){}}
+};
+// refresco de UI cuando llega un cambio remoto (otro dispositivo/usuario)
+function _refrescoRemoto(k){
+  try{
+    actualizarBadges&&actualizarBadges();
+    const activo=document.querySelector('.tab-panel.active');if(!activo)return;
+    const id=activo.id.replace('panel-','');
+    if(k==='cotizaciones'){if(id==='mis')renderMis();if(id==='costos')renderCostos();if(id==='jefe')renderJefe();if(id==='dash')renderDash();if(id==='auditoria')renderAuditoria();}
+    if(k==='materiales'&&id==='catalogo')renderCatalogo();
+    if(k==='usuarios'&&id==='users')renderUsers();
+    if(k==='mensajes'&&document.getElementById('modal-chat')?.classList.contains('open')&&STATE.chatCon!=null)renderThread();
+    if(k==='notifs'&&document.getElementById('modal-notifs')?.classList.contains('open'))renderNotifs();
+  }catch(e){}
+}
+
 // ── DB ──
 const DB={
   get:k=>{try{return JSON.parse(localStorage.getItem('tacre_'+k)||'null');}catch(e){return null;}},
-  set:(k,v)=>localStorage.setItem('tacre_'+k,JSON.stringify(v)),
+  // MEJ-43: escribe local (rápido y offline) y sincroniza a la nube si está activa
+  set:(k,v)=>{localStorage.setItem('tacre_'+k,JSON.stringify(v));Nube.push(k,v);},
   async init(){
     if(!DB.get('config'))DB.set('config',{empresa:'TACRE - Creatividad & Diseño',direccion:'Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',web:'tallercreativo.com.mx',nextFolio:1});
     if(!DB.get('materiales'))DB.set('materiales',CATALOGO_INICIAL);
@@ -1047,6 +1184,19 @@ async function doLogin(){
   const user=document.getElementById('l-user').value.trim();
   // BUG-09 FIX: contraseña sin .trim() — espacios son parte de la clave
   const pass=document.getElementById('l-pass').value;
+  // MEJ-43: en modo nube, la contraseña la valida Firebase Auth (Google); nada de hashes locales
+  if(Nube.on){
+    try{
+      const u=await Nube.login(user,pass);
+      DB.set('sesion',{userId:u.id,exp:Date.now()+7*24*3600*1000});
+      _entrarApp(u);
+    }catch(e){
+      const el=document.getElementById('l-err');
+      el.textContent=/user-not-found|invalid-credential|wrong-password|invalid-login/.test(e.code||e.message)?'Usuario o contraseña incorrectos':'No se pudo iniciar sesión: revisa tu conexión';
+      el.style.display='block';
+    }
+    return;
+  }
   const usuarios=DB.get('usuarios');
   const u=usuarios.find(x=>x.user===user&&x.activo);
   if(!u){document.getElementById('l-err').style.display='block';return;}
@@ -1064,7 +1214,7 @@ function _entrarApp(u){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app-screen').style.display='block';
   document.getElementById('nav-rol').textContent=u.roles.join('+');
-  document.getElementById('nav-nombre').textContent=u.nombre.split(' ')[0];
+  document.getElementById('nav-nombre').textContent=(Nube.on?'☁️ ':'')+u.nombre.split(' ')[0];
   buildTabs();activateTab(getFirstTab());
   // MEJ-35/36: badges de notificaciones y chat + refresco ligero
   actualizarBadges();
@@ -1074,7 +1224,13 @@ function _entrarApp(u){
   },5000);
 }
 // FIX-26: restaurar sesión al cargar (si no expiró y el usuario sigue activo)
-function restaurarSesion(){
+async function restaurarSesion(){
+  // MEJ-43: en modo nube manda la sesión de Firebase (si no hay, se pide login)
+  if(Nube.on){
+    const u=await Nube.reanudar();
+    if(u){DB.set('sesion',{userId:u.id,exp:Date.now()+7*24*3600*1000});_entrarApp(u);return true;}
+    return false;
+  }
   const s=DB.get('sesion');
   if(!s||!s.userId||Date.now()>(s.exp||0))return false;
   const u=(DB.get('usuarios')||[]).find(x=>x.id===s.userId&&x.activo);
@@ -1086,6 +1242,7 @@ function restaurarSesion(){
 function doLogout(){
   STATE.user=null;STATE.items=[];STATE.params=[];STATE.conds=[];STATE.editId=null;STATE.editEstado=null;clearAutoSave();
   if(STATE.badgeTimer){clearInterval(STATE.badgeTimer);STATE.badgeTimer=null;}
+  Nube.logout(); // MEJ-43: cierra también la sesión de Firebase
   localStorage.removeItem('tacre_sesion'); // FIX-26: salir borra la sesión persistida
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app-screen').style.display='none';
@@ -2756,7 +2913,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v5.14',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v6.0',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
@@ -2887,7 +3044,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
     setDec(n);
   }))).observe(document.body,{childList:true,subtree:true});
   await DB.init();
-  restaurarSesion(); // FIX-26: si hay sesión válida, entra directo sin pedir login
+  await Nube.init(); // MEJ-43: activa el modo nube si hay FIREBASE_CONFIG (si no, 100% local)
+  await restaurarSesion(); // FIX-26: si hay sesión válida, entra directo sin pedir login
 });
 </script>
 </body>
