@@ -705,13 +705,18 @@ const Nube={
     this.arrancar();
     await this.esperar('usuarios');
     const us=DB.get('usuarios')||[];
-    let u=us.find(x=>x.uid===cred.user.uid)||us.find(x=>x.user===user&&x.activo);
-    if(u&&!u.uid){u.uid=cred.user.uid;DB.set('usuarios',us);} // vincular cuenta nube ↔ usuario local
-    if(!u){ // primer acceso en un despliegue nuevo: crear ficha básica (roles los ajusta admin)
-      u={id:Date.now(),nombre:user,user,hash:'',roles:['vendedor'],activo:true,uid:cred.user.uid};
-      us.push(u);DB.set('usuarios',us);
-    }
+    // FIX-44: reconoce "admin" o "admin@tacre.app"; PREFIERE el perfil real (usuario sin @)
+    // sobre fichas basura auto-creadas por el bug previo, y las ELIMINA (auto-reparación),
+    // aunque la basura tenga pegado el uid de la cuenta.
+    const target=this.emailDe(user);
+    const esBasura=x=>String(x.user||'').includes('@');
+    const mio=x=>x.uid===cred.user.uid||this.emailDe(x.user||'')===target;
+    let u=us.find(x=>x.activo&&!esBasura(x)&&mio(x))||us.find(x=>x.activo&&mio(x));
+    if(!u)throw new Error('Tu cuenta existe pero no tiene perfil asignado. Pídele al administrador que te dé de alta en Usuarios.');
     if(!u.activo)throw new Error('Usuario desactivado');
+    u.uid=cred.user.uid; // vincular cuenta nube ↔ perfil real
+    const limpio=us.filter(x=>x===u||!(esBasura(x)&&mio(x)));
+    DB.set('usuarios',limpio); // guarda el vínculo y borra la ficha basura de la nube
     return u;
   },
   // reanudar sesión persistida por Firebase (equivalente nube de restaurarSesion)
@@ -768,8 +773,10 @@ const Nube={
   },
   async bootstrapSiVacia(){ // primer arranque: siembra LIMPIA (sin demos ni datos locales de prueba)
     try{
-      const u=await this.fs.collection('usuarios').limit(1).get();
-      if(!u.empty)return; // la nube ya está inicializada
+      // FIX-44: chequear por el usuario admin (doc '1'), no por colección vacía —
+      // así se auto-repara aunque haya quedado una ficha basura de un login previo
+      const adminDoc=await this.fs.collection('usuarios').doc('1').get();
+      if(adminDoc.exists)return; // ya inicializada
       const batch=this.fs.batch();
       PROD_USERS.forEach(x=>batch.set(this.fs.collection('usuarios').doc(String(x.id)),x));
       const cat=(Array.isArray(DB.get('materiales'))&&DB.get('materiales').length)?DB.get('materiales'):CATALOGO_INICIAL;
@@ -1215,7 +1222,9 @@ async function doLogin(){
       _entrarApp(u);
     }catch(e){
       const el=document.getElementById('l-err');
-      el.textContent=/user-not-found|invalid-credential|wrong-password|invalid-login/.test(e.code||e.message)?'Usuario o contraseña incorrectos':'No se pudo iniciar sesión: revisa tu conexión';
+      const code=e.code||'';
+      if(/perfil|desactivado/i.test(e.message||''))el.textContent=e.message;
+      else el.textContent=/user-not-found|invalid-credential|wrong-password|invalid-login/.test(code||e.message)?'Usuario o contraseña incorrectos':'No se pudo iniciar sesión: revisa tu conexión';
       el.style.display='block';
     }
     return;
