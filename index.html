@@ -655,16 +655,28 @@ async function copyText(txt){
 // por diseño: la seguridad la ponen las Security Rules del servidor, no el secreto.
 // Con null la app funciona 100% LOCAL (localStorage) exactamente como hasta hoy.
 // ═══════════════════════════════════════════════
-const FIREBASE_CONFIG=null;
-/* Ejemplo:
 const FIREBASE_CONFIG={
-  apiKey:"AIza...", authDomain:"tacre-cotiza.firebaseapp.com", projectId:"tacre-cotiza",
-  storageBucket:"tacre-cotiza.appspot.com", messagingSenderId:"123...", appId:"1:123..."
-}; */
+  apiKey:"AIzaSyC5El9jHMOqg682sS3r0uYuXadl8AdWHFU",
+  authDomain:"tacre-cotiza.firebaseapp.com",
+  projectId:"tacre-cotiza",
+  storageBucket:"tacre-cotiza.firebasestorage.app",
+  messagingSenderId:"1012392824075",
+  appId:"1:1012392824075:web:2e0b526a012ee98518660e"
+};
 
 // Colecciones sincronizadas: clave local → campo identificador del registro.
 // 'config' va como documento único; 'sesion' NUNCA se sube (es por-dispositivo).
 const NUBE_COLS={cotizaciones:'id',usuarios:'id',materiales:'codigo',notifs:'id',mensajes:'id'};
+
+// MEJ-43: usuarios de producción alineados con las cuentas de Firebase Auth
+// (admin@ jefe@ vendedor@ costos@ tacre.app). El rol se toma de aquí en el primer
+// arranque en la nube; luego el admin los edita desde la pestaña Usuarios.
+const PROD_USERS=[
+  {id:1,nombre:'Administrador',user:'admin',hash:'',roles:['admin','jefe','vendedor','costos'],activo:true},
+  {id:4,nombre:'Jefe',user:'jefe',hash:'',roles:['jefe'],activo:true},
+  {id:2,nombre:'Vendedor',user:'vendedor',hash:'',roles:['vendedor'],activo:true},
+  {id:3,nombre:'Costos',user:'costos',hash:'',roles:['costos'],activo:true}
+];
 
 const Nube={
   on:false, auth:null, fs:null, _prev:{}, _aplicando:false, _unsubs:[], _escuchando:false, _esperas:{},
@@ -689,6 +701,7 @@ const Nube={
   emailDe(user){return user.includes('@')?user:(user.toLowerCase()+'@tacre.app');},
   async login(user,pass){
     const cred=await this.auth.signInWithEmailAndPassword(this.emailDe(user),pass);
+    await this.bootstrapSiVacia(); // siembra limpia la 1ª vez (antes de escuchar)
     this.arrancar();
     await this.esperar('usuarios');
     const us=DB.get('usuarios')||[];
@@ -728,7 +741,6 @@ const Nube={
       if(d.exists){this._aplicando=true;localStorage.setItem('tacre_config',JSON.stringify(d.data()));this._aplicando=false;}
     },e=>console.warn('Nube config',e));
     this._unsubs.push(unc);
-    this.migrarSiNubeVacia();
   },
   esperar(k){return new Promise(res=>{this._esperas[k]=res;setTimeout(res,6000);});}, // 1ª carga o timeout
   push(k,vNuevo){ // diff por registro → solo sube lo que cambió (y borra lo eliminado)
@@ -754,16 +766,25 @@ const Nube={
       batch.commit().catch(e=>console.warn('Nube push',k,e));
     }
   },
-  async migrarSiNubeVacia(){ // primera vez: sube los datos locales existentes
+  async bootstrapSiVacia(){ // primer arranque: siembra LIMPIA (sin demos ni datos locales de prueba)
     try{
-      const [c,u]=await Promise.all([this.fs.collection('cotizaciones').limit(1).get(),this.fs.collection('usuarios').limit(1).get()]);
-      if(!c.empty||!u.empty)return;
-      Object.keys(NUBE_COLS).forEach(k=>{const v=DB.get(k);if(Array.isArray(v)&&v.length){this._prev[k]=[];this.push(k,v);}});
-      const cfg=DB.get('config');if(cfg)this.fs.collection('config').doc('main').set(cfg);
-      toast('☁️ Migración inicial: datos locales subidos a la nube');
-    }catch(e){console.warn('Nube migración',e);}
+      const u=await this.fs.collection('usuarios').limit(1).get();
+      if(!u.empty)return; // la nube ya está inicializada
+      const batch=this.fs.batch();
+      PROD_USERS.forEach(x=>batch.set(this.fs.collection('usuarios').doc(String(x.id)),x));
+      const cat=(Array.isArray(DB.get('materiales'))&&DB.get('materiales').length)?DB.get('materiales'):CATALOGO_INICIAL;
+      cat.forEach(m=>batch.set(this.fs.collection('materiales').doc(String(m.codigo)),m));
+      await batch.commit();
+      const cfg=DB.get('config')||{empresa:'TACRE - Creatividad & Diseño',nextFolio:1};
+      await this.fs.collection('config').doc('main').set(cfg);
+      // reflejar local ya (sin re-empujar) y limpiar demos locales para ver la nube real
+      this._prev.usuarios=JSON.parse(JSON.stringify(PROD_USERS));localStorage.setItem('tacre_usuarios',JSON.stringify(PROD_USERS));
+      this._prev.materiales=JSON.parse(JSON.stringify(cat));localStorage.setItem('tacre_materiales',JSON.stringify(cat));
+      ['cotizaciones','notifs','mensajes'].forEach(k=>{this._prev[k]=[];localStorage.setItem('tacre_'+k,'[]');});
+      toast('☁️ Nube inicializada: 4 usuarios + catálogo. Arranca limpia, sin demos.');
+    }catch(e){console.warn('Nube bootstrap',e);}
   },
-  logout(){try{if(this.on)this.auth.signOut();}catch(e){}}
+  logout(){try{if(this.on){this._unsubs.forEach(u=>u&&u());this._unsubs=[];this._escuchando=false;this.auth.signOut();}}catch(e){}}
 };
 // refresco de UI cuando llega un cambio remoto (otro dispositivo/usuario)
 function _refrescoRemoto(k){
@@ -1012,6 +1033,8 @@ function _demoCots(){
   return list;
 }
 function cargarDemos(){
+  // MEJ-43: en la nube las demos se sincronizarían a TODO el equipo — evitar ensuciar producción
+  if(Nube.on&&!confirm('⚠️ Estás en modo NUBE: las 44 demos se sincronizarán a TODOS los dispositivos del equipo. ¿Seguro? (para producción real, NO cargues demos)'))return;
   const cots=DB.get('cotizaciones')||[];
   if(cots.some(c=>(c.folio||'').startsWith('DEMO-'))){toast('⚠️ Ya hay demos cargadas. Bórralas primero.');return;}
   const demos=_demoCots();
