@@ -684,11 +684,12 @@ const Nube={
     if(!FIREBASE_CONFIG)return false;
     try{
       const base='https://www.gstatic.com/firebasejs/10.12.2/';
-      for(const f of ['firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js']){
+      for(const f of ['firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js','firebase-storage-compat.js']){
         await new Promise((res,rej)=>{const s=document.createElement('script');s.src=base+f;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar '+f));document.head.appendChild(s);});
       }
       firebase.initializeApp(FIREBASE_CONFIG);
       this.auth=firebase.auth();this.fs=firebase.firestore();
+      try{this.storage=firebase.storage();}catch(e){this.storage=null;} // MEJ-46: archivero de adjuntos
       try{await this.fs.enablePersistence({synchronizeTabs:true});}catch(e){/* multi-pestaña: ok */}
       // esperar a que Firebase restaure (o no) la sesión persistida
       await new Promise(res=>{const off=this.auth.onAuthStateChanged(()=>{off();res();});});
@@ -2494,7 +2495,8 @@ function aplicarDescuentoNeg(id){
 // Cada cotización guarda sus documentos (carta de presentación, fichas técnicas, imágenes).
 // Se marcan cuáles se envían al cliente junto al PDF. Límite 1.5 MB por archivo porque hoy
 // viven en localStorage (~5 MB por navegador); la solución definitiva es Firebase Storage (v6.0).
-const ADJ_MAX=1.5*1024*1024;
+const ADJ_MAX=1.5*1024*1024;        // modo local (base64 en el navegador)
+const ADJ_MAX_NUBE=25*1024*1024;    // MEJ-46: con Firebase Storage — fichas técnicas, planos
 function _puedeAdjuntar(cot){return cot.vendedorId===STATE.user.id||hasRole('jefe')||hasRole('admin');}
 function renderAdjuntosDetalle(cotId){
   const cot=getCotById(cotId);const c=document.getElementById('mc-adjuntos');if(!cot||!c)return;
@@ -2502,7 +2504,7 @@ function renderAdjuntosDetalle(cotId){
   const adjs=cot.adjuntos||[];
   c.innerHTML=`<div class="aprob-box" style="margin-bottom:10px;">
     <h4>📎 Documentos de la Proforma</h4>
-    <div style="font-size:.72rem;color:var(--n5);margin-bottom:8px;">Cartas, fichas técnicas, imágenes… Marca cuáles se envían al cliente junto al PDF (máx. 1.5 MB c/u).</div>
+    <div style="font-size:.72rem;color:var(--n5);margin-bottom:8px;">Cartas, fichas técnicas, planos, imágenes… Marca cuáles se envían al cliente junto al PDF (máx. ${(Nube.on&&Nube.storage)?'25 MB':'1.5 MB'} c/u).</div>
     ${adjs.length?adjs.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(90,45,130,.08);font-size:.8rem;flex-wrap:wrap;">
       <span>${a.tipo&&a.tipo.startsWith('image')?'🖼️':'📄'}</span>
       <span style="flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${sanitize(a.nombre)}">${sanitize(a.nombre)} <span style="color:var(--n5);font-size:.68rem;">(${Math.round((a.size||0)/1024)} KB · ${sanitize(a.por||'')})</span></span>
@@ -2514,13 +2516,34 @@ function renderAdjuntosDetalle(cotId){
       <button class="btn btn-t btn-sm" onclick="document.getElementById('adj-file-inp').click()">📎 Adjuntar documento</button></div>`:''}
   </div>`;
 }
-function subirAdjunto(cotId,input){
+// MEJ-46: en la nube el archivo sube a Firebase Storage y en la cotización queda SOLO
+// el enlace (así el documento se mantiene liviano y siempre sincroniza). En modo local
+// se sigue usando base64 con el límite chico del navegador.
+async function subirAdjunto(cotId,input){
   const f=input.files&&input.files[0];input.value='';if(!f)return;
-  if(f.size>ADJ_MAX){toast('⚠️ Máximo 1.5 MB por archivo (este pesa '+Math.round(f.size/1024)+' KB). Comprímelo, o en la fase de nube (v6.0) subirán sin límite.');return;}
+  const max=(Nube.on&&Nube.storage)?ADJ_MAX_NUBE:ADJ_MAX;
+  if(f.size>max){toast('⚠️ Máximo '+Math.round(max/1024/1024)+' MB por archivo (este pesa '+Math.round(f.size/1024/1024*10)/10+' MB)');return;}
+  const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot)return;
+  if(!cot.adjuntos)cot.adjuntos=[];
+  if(Nube.on&&Nube.storage){
+    toast('⏳ Subiendo '+f.name+'...');
+    try{
+      const path='adjuntos/'+cotId+'/'+generateUUID()+'_'+f.name.replace(/[^\w.\-]/g,'_');
+      const ref=Nube.storage.ref(path);
+      await ref.put(f,{contentType:f.type||'application/octet-stream'});
+      const url=await ref.getDownloadURL();
+      cot.adjuntos.push({id:generateUUID(),nombre:f.name,tipo:f.type,size:f.size,url,path,enviar:true,fecha:new Date().toISOString(),por:STATE.user.nombre});
+      agregarHistorial(cot,'Adjuntó documento: '+f.name);
+      DB.set('cotizaciones',cots);
+      toast('📎 '+f.name+' adjuntado ('+Math.round(f.size/1024)+' KB)');renderAdjuntosDetalle(cotId);
+    }catch(e){
+      console.warn('Storage',e);
+      toast('⛔ No se pudo subir. Revisa que Firebase Storage esté activo (plan Blaze) y sus reglas publicadas.');
+    }
+    return;
+  }
   const r=new FileReader();
   r.onload=ev=>{
-    const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot)return;
-    if(!cot.adjuntos)cot.adjuntos=[];
     cot.adjuntos.push({id:generateUUID(),nombre:f.name,tipo:f.type,size:f.size,data:ev.target.result,enviar:true,fecha:new Date().toISOString(),por:STATE.user.nombre});
     agregarHistorial(cot,'Adjuntó documento: '+f.name);
     try{DB.set('cotizaciones',cots);}
@@ -2537,26 +2560,33 @@ function borrarAdjunto(cotId,i){
   const cots=DB.get('cotizaciones');const cot=cots.find(c=>c.id===cotId);if(!cot||!cot.adjuntos||!cot.adjuntos[i])return;
   if(!confirm('¿Eliminar "'+cot.adjuntos[i].nombre+'"?'))return;
   const rm=cot.adjuntos.splice(i,1)[0];
+  // MEJ-46: borrar también el archivo real del archivero (no dejar basura ocupando espacio)
+  if(rm&&rm.path&&Nube.on&&Nube.storage){Nube.storage.ref(rm.path).delete().catch(e=>console.warn('Storage del',e));}
   agregarHistorial(cot,'Eliminó adjunto: '+(rm?rm.nombre:''));
   DB.set('cotizaciones',cots);renderAdjuntosDetalle(cotId);
 }
 function descargarAdjunto(cotId,i){
   const cot=getCotById(cotId);const a=cot&&cot.adjuntos&&cot.adjuntos[i];if(!a)return;
-  const el=document.createElement('a');el.href=a.data;el.download=a.nombre;el.click();
+  const el=document.createElement('a');el.href=a.url||a.data; // MEJ-46: enlace de Storage o base64 local
+  el.download=a.nombre;if(a.url)el.target='_blank';el.click();
 }
-// Convierte los adjuntos marcados "se envía" en Files para la hoja de compartir nativa
-function _adjuntosParaEnviar(cot){
-  return (cot.adjuntos||[]).filter(a=>a.enviar&&a.data).map(a=>{
+// MEJ-46: adjuntos marcados "se envía" → Files para la hoja de compartir nativa
+// (los de Storage se descargan por su enlace; los locales salen del base64)
+async function _adjuntosParaEnviar(cot){
+  const marcados=(cot.adjuntos||[]).filter(a=>a.enviar&&(a.url||a.data));
+  const files=await Promise.all(marcados.map(async a=>{
     try{
+      if(a.url){const b=await (await fetch(a.url)).blob();return new File([b],a.nombre,{type:a.tipo||b.type||'application/octet-stream'});}
       const bin=atob(a.data.split(',')[1]);const arr=new Uint8Array(bin.length);
       for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
       return new File([arr],a.nombre,{type:a.tipo||'application/octet-stream'});
     }catch(e){return null;}
-  }).filter(Boolean);
+  }));
+  return files.filter(Boolean);
 }
 function _descargarAdjuntosMarcados(cot){
-  (cot.adjuntos||[]).filter(a=>a.enviar&&a.data).forEach((a,k)=>{
-    setTimeout(()=>{const el=document.createElement('a');el.href=a.data;el.download=a.nombre;el.click();},250*(k+1));
+  (cot.adjuntos||[]).filter(a=>a.enviar&&(a.url||a.data)).forEach((a,k)=>{
+    setTimeout(()=>{const el=document.createElement('a');el.href=a.url||a.data;el.download=a.nombre;if(a.url)el.target='_blank';el.click();},250*(k+1));
   });
 }
 
@@ -3013,7 +3043,7 @@ async function compartirWA(id){
   if(pdfData){
     const file=new File([pdfData.blob],pdfData.filename,{type:'application/pdf'});
     // MEJ-42: los adjuntos marcados "se envía" viajan junto al PDF en la hoja nativa
-    const files=[file,..._adjuntosParaEnviar(cot)];
+    const files=[file,...(await _adjuntosParaEnviar(cot))]; // MEJ-46: async (bajan de Storage)
     if(navigator.canShare?.({files})){try{await navigator.share({files,title:'Cotización TACRE',text:msg});return;}catch(e){}}
     const url=URL.createObjectURL(pdfData.blob);const a=document.createElement('a');a.href=url;a.download=pdfData.filename;a.click();URL.revokeObjectURL(url);
     _descargarAdjuntosMarcados(cot); // fallback: también se descargan los adjuntos
