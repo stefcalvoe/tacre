@@ -721,6 +721,7 @@ const Nube={
     if(u.id===1&&!(u.roles||[]).includes('superadmin'))u.roles=['superadmin',...(u.roles||[])];
     const limpio=us.filter(x=>x===u||!(esBasura(x)&&mio(x)));
     DB.set('usuarios',limpio); // guarda el vínculo y borra la ficha basura de la nube
+    if((u.roles||[]).includes('admin'))this.marcarAdmin(cred.user.uid,true,u); // MEJ-48
     return u;
   },
   // reanudar sesión persistida por Firebase (equivalente nube de restaurarSesion)
@@ -795,7 +796,18 @@ const Nube={
       toast('☁️ Nube inicializada: 4 usuarios + catálogo. Arranca limpia, sin demos.');
     }catch(e){console.warn('Nube bootstrap',e);}
   },
-  logout(){try{if(this.on){this._unsubs.forEach(u=>u&&u());this._unsubs=[];this._escuchando=false;this.auth.signOut();}}catch(e){}}
+  logout(){try{if(this.on){this._unsubs.forEach(u=>u&&u());this._unsubs=[];this._escuchando=false;this.auth.signOut();}}catch(e){}},
+  // MEJ-48: espejo de admins (colección admins/{uid}) para que las Security Rules del
+  // servidor sepan quién puede escribir usuarios/catálogo/config. Se puebla mientras las
+  // reglas aún son permisivas; luego se publican las reglas estrictas.
+  async marcarAdmin(uid,esAdmin,info){
+    if(!this.on||!uid)return;
+    try{
+      const ref=this.fs.collection('admins').doc(uid);
+      if(esAdmin)await ref.set({roles:(info&&info.roles)||['admin'],nombre:(info&&info.nombre)||'',ts:new Date().toISOString()});
+      else await ref.delete();
+    }catch(e){console.warn('admins sync',e);}
+  }
 };
 // refresco de UI cuando llega un cambio remoto (otro dispositivo/usuario)
 function _refrescoRemoto(k){
@@ -2742,7 +2754,10 @@ async function guardarUsuario(){
     if(!pass){toast('⚠️ La contraseña es requerida para nuevos usuarios');return;}
     users.push({id:Date.now(),nombre,user,roles,activo:true,hash:await hashPassword(pass)});
   }
-  DB.set('usuarios',users);closeModal('modal-user');renderUsers();toast('Usuario guardado');
+  DB.set('usuarios',users);
+  // MEJ-48: mantener el espejo de admins al día cuando cambian los roles de un usuario con acceso
+  if(id){const ed=users.find(u=>u.id==id);if(ed&&ed.uid&&Nube.on)Nube.marcarAdmin(ed.uid,(ed.roles||[]).includes('admin'),ed);}
+  closeModal('modal-user');renderUsers();toast('Usuario guardado');
 }
 
 // ── CATÁLOGO ──
