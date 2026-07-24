@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v6.1 — Sistema de Cotizaciones</title>
+<title>TACRE v6.2 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v6.1</div>
+    <div class="login-sub">Sistema de Cotizaciones v6.2</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -424,6 +424,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
     <div class="panel-hdr"><div><div class="panel-title">💾 Respaldo y Restauración</div><div class="panel-sub">Exportar o importar toda la base de datos</div></div></div>
     <div class="s-card">
       <p style="margin-bottom:12px;color:var(--n5)">Puedes descargar un archivo con todos los datos (usuarios, cotizaciones, materiales, configuración) o restaurar desde una copia anterior.</p>
+      <div id="backup-auto-info" style="font-size:.82rem;color:var(--td);background:var(--tl);border-radius:8px;padding:10px 12px;margin-bottom:12px;"></div>
       <div class="btn-row">
         <button class="btn btn-p" onclick="descargarBackup()">📥 Descargar Backup (JSON)</button>
         <button class="btn btn-out" onclick="document.getElementById('restore-file').click()">📤 Restaurar Backup</button>
@@ -1257,6 +1258,7 @@ function _entrarApp(u){
   STATE.badgeTimer=setInterval(()=>{actualizarBadges();
     if(document.getElementById('modal-chat')?.classList.contains('open')&&STATE.chatCon!=null)renderThread();
   },5000);
+  respaldoAutomatico(); // MEJ-47: respaldo diario en la nube al entrar (solo admin)
 }
 // FIX-26: restaurar sesión al cargar (si no expiró y el usuario sigue activo)
 async function restaurarSesion(){
@@ -1304,6 +1306,8 @@ function activateTab(id){
   if(id==='users')renderUsers();
   if(id==='catalogo')renderCatalogo();
   if(id==='dash')renderDash();
+  if(id==='backup'){const el=document.getElementById('backup-auto-info');if(el){const f=localStorage.getItem('tacre_lastBackupFecha');
+    el.innerHTML=Nube.on?(f?'🛡️ Respaldo automático activo · última copia en la nube: <strong>'+fmtFecha(f.slice(0,10))+' '+new Date(f).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+'</strong> (carpeta <code>respaldos/</code>)':'🛡️ Respaldo automático activo — se genera la primera copia hoy al entrar como admin.'):'ℹ️ Respaldo automático disponible en modo nube. Aquí puedes descargar/restaurar manualmente.';}}
   if(id==='nueva'){if(!STATE.editId)limpiarForm();initFecha();}
 }
 
@@ -2643,8 +2647,27 @@ function cargarParaEditar(id){
 }
 
 // ── BACKUP ──
+// MEJ-47: respaldo automático diario a Firebase Storage (carpeta respaldos/).
+// Lo dispara el primer admin que entra cada día; 1 archivo por día (mismo nombre se
+// sobrescribe). No corre en modo local ni para roles no-admin.
+async function respaldoAutomatico(){
+  if(!Nube.on||!Nube.storage||!hasRole('admin'))return;
+  const ahora=Date.now();
+  const ultimo=parseInt(localStorage.getItem('tacre_lastBackup')||'0',10);
+  if(ahora-ultimo<20*3600*1000)return; // ya hay uno reciente
+  try{
+    const snap={generado:new Date().toISOString(),app:'TACRE',version:'6.1',
+      config:DB.get('config'),usuarios:DB.get('usuarios'),materiales:DB.get('materiales'),
+      cotizaciones:DB.get('cotizaciones'),notifs:DB.get('notifs'),mensajes:DB.get('mensajes')};
+    const fecha=new Date().toISOString().slice(0,10);
+    await Nube.storage.ref('respaldos/backup_'+fecha+'.json').putString(JSON.stringify(snap),'raw',{contentType:'application/json'});
+    localStorage.setItem('tacre_lastBackup',String(ahora));
+    localStorage.setItem('tacre_lastBackupFecha',new Date().toISOString());
+    console.log('☁️ Respaldo automático guardado: backup_'+fecha+'.json');
+  }catch(e){console.warn('Respaldo automático',e);}
+}
 function descargarBackup(){
-  const backup={usuarios:DB.get('usuarios'),cotizaciones:DB.get('cotizaciones'),materiales:DB.get('materiales'),config:DB.get('config')};
+  const backup={usuarios:DB.get('usuarios'),cotizaciones:DB.get('cotizaciones'),materiales:DB.get('materiales'),config:DB.get('config'),notifs:DB.get('notifs'),mensajes:DB.get('mensajes')};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;
   a.download='tacre_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);toast('📥 Backup descargado');
@@ -2659,6 +2682,7 @@ function restaurarBackup(input){
       const backup=JSON.parse(e.target.result);
       if(backup.usuarios)DB.set('usuarios',backup.usuarios);if(backup.cotizaciones)DB.set('cotizaciones',backup.cotizaciones);
       if(backup.materiales)DB.set('materiales',backup.materiales);if(backup.config)DB.set('config',backup.config);
+      if(backup.notifs)DB.set('notifs',backup.notifs);if(backup.mensajes)DB.set('mensajes',backup.mensajes); // MEJ-47
       toast('✓ Backup restaurado. Recargando...');
       setTimeout(()=>location.reload(),1500);
     }catch(err){toast('✗ Archivo inválido');}
@@ -2985,7 +3009,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v6.1',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v6.2',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);

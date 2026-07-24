@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manual de Uso — TACRE</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--p:#5a2d82;--pd:#3d1d5a;--t:#00a8a8;--td:#007a7a;--pl:#f5f0fc;--tl:#e8f9f9;--n9:#111827;--n7:#374151;--n5:#6b7280;--n3:#d1d5db;--n1:#f8f9fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;color:var(--n9);line-height:1.65;background:#e9ecf3;padding:24px 12px}
+.hoja{max-width:880px;margin:0 auto 24px;background:#fff;box-shadow:0 8px 32px rgba(0,0,0,.12);border-radius:10px;overflow:hidden}
+.hero{background:linear-gradient(135deg,var(--pd),var(--p) 55%,#6f3da6);color:#fff;padding:36px 44px}
+.marca{display:flex;align-items:center;gap:14px}
+.marca img{width:56px;height:56px;background:#fff;border-radius:12px;padding:5px;object-fit:contain}
+.marca .nom{font-size:1.8rem;font-weight:900;letter-spacing:-1px;line-height:1}
+.marca .nom span{color:#5de8e8}
+.marca .sub{font-size:.7rem;opacity:.85;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.hero h1{font-size:1.95rem;font-weight:900;margin-top:24px;letter-spacing:-.5px}
+.hero .para{margin-top:8px;font-size:.92rem;opacity:.9}
+.cuerpo{padding:34px 44px}
+.toc{background:var(--pl);border-radius:12px;padding:20px 24px;margin-bottom:30px;border:1px solid rgba(90,45,130,.12)}
+.toc h3{font-size:.72rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--p);margin-bottom:10px}
+.toc ol{margin-left:18px;font-size:.88rem;color:var(--n7)}
+.toc li{padding:3px 0}
+.toc a{color:var(--n7);text-decoration:none}
+.toc a:hover{color:var(--p)}
+h2{font-size:1.25rem;font-weight:900;color:var(--p);margin:38px 0 14px;padding-bottom:9px;border-bottom:2.5px solid var(--pl);scroll-margin-top:16px}
+h2 .num{display:inline-flex;width:29px;height:29px;background:linear-gradient(135deg,var(--p),var(--t));color:#fff;border-radius:8px;font-size:.88rem;align-items:center;justify-content:center;margin-right:9px;vertical-align:middle}
+h3{font-size:.98rem;font-weight:800;color:var(--n9);margin:20px 0 8px}
+p{margin-bottom:11px;color:var(--n7)}
+.paso{display:flex;gap:13px;padding:11px 0;border-bottom:1px solid var(--n1)}
+.paso:last-child{border-bottom:none}
+.paso .n{flex-shrink:0;width:25px;height:25px;background:var(--tl);color:var(--td);border-radius:50%;font-weight:900;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.paso .txt{font-size:.89rem;color:var(--n7)}
+.paso .txt b{color:var(--n9)}
+.tip{background:var(--tl);border-left:4px solid var(--t);border-radius:0 8px 8px 0;padding:13px 17px;margin:14px 0;font-size:.86rem;color:var(--n7)}
+.tip b{color:var(--td)}
+.warn{background:#fef9c3;border-left:4px solid #eab308;border-radius:0 8px 8px 0;padding:13px 17px;margin:14px 0;font-size:.86rem;color:#713f12}
+.warn b{color:#854d0e}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:12px 0}
+th{background:var(--p);color:#fff;padding:9px 12px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.6px}
+td{padding:9px 12px;border-bottom:1px solid var(--n1);color:var(--n7);vertical-align:top}
+tr:nth-child(even) td{background:var(--n1)}
+code{background:var(--pl);color:var(--p);padding:2px 7px;border-radius:5px;font-size:.85em;font-weight:600;font-family:inherit}
+.disp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.disp-card{border:1.5px solid var(--n3);border-radius:10px;padding:16px 18px}
+.disp-card h4{font-size:.92rem;font-weight:800;color:var(--p);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.flujo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:16px 0;justify-content:center}
+.flujo .et{background:var(--pl);border:1.5px solid rgba(90,45,130,.2);border-radius:20px;padding:6px 13px;font-size:.76rem;font-weight:700;color:var(--p)}
+.flujo .fl{color:var(--t);font-weight:900}
+.pie{background:var(--n1);padding:16px 44px;font-size:.72rem;color:var(--n5);text-align:center;border-top:2px solid var(--pl)}
+@media(max-width:680px){.disp{grid-template-columns:1fr}.hero,.cuerpo{padding:24px 20px}.pie{padding:14px 20px}.hero h1{font-size:1.5rem}}
+@media print{
+  body{background:#fff;padding:0}
+  .hoja{box-shadow:none;border-radius:0;max-width:100%;margin:0}
+  h2{break-after:avoid;break-inside:avoid}
+  .paso,.tip,.warn,.disp-card,table{break-inside:avoid}
+  .toc{break-after:page}
+  @page{margin:12mm}
+}
+</style>
+</head>
+<body>
+<div class="hoja">
+  <div class="hero">
+    <div class="marca">
+      <img src="icon-192.png" alt="TACRE">
+      <div>
+        <div class="nom">TA<span>CRE</span></div>
+        <div class="sub">Sistema de Cotizaciones</div>
+      </div>
+    </div>
+    <h1>Manual de Uso</h1>
+    <div class="para">Guía completa para el equipo de Taller Creativo · Versión 6.1</div>
+  </div>
+
+  <div class="cuerpo">
+    <div class="toc">
+      <h3>Contenido</h3>
+      <ol>
+        <li><a href="#s1">Cómo ingresar al sistema</a></li>
+        <li><a href="#s2">Instalar la app en cada dispositivo</a></li>
+        <li><a href="#s3">Los roles: quién hace qué</a></li>
+        <li><a href="#s4">Crear y enviar una cotización (paso a paso)</a></li>
+        <li><a href="#s5">Revisión de costos</a></li>
+        <li><a href="#s6">Aprobación del jefe y precio final</a></li>
+        <li><a href="#s7">Enviar al cliente y cerrar la venta</a></li>
+        <li><a href="#s8">Negociación y descuentos autorizados</a></li>
+        <li><a href="#s9">Documentos adjuntos</a></li>
+        <li><a href="#s10">Catálogo de materiales</a></li>
+        <li><a href="#s11">Tablero de indicadores</a></li>
+        <li><a href="#s12">Avisos y mensajería interna</a></li>
+        <li><a href="#s13">Administración de usuarios</a></li>
+        <li><a href="#s14">Respaldos y seguridad</a></li>
+        <li><a href="#s15">Preguntas frecuentes</a></li>
+      </ol>
+    </div>
+
+    <h2 id="s1"><span class="num">1</span>Cómo ingresar al sistema</h2>
+    <p>TACRE funciona desde cualquier navegador. No hay que instalar programas ni tener una computadora en especial.</p>
+    <div class="paso"><div class="n">1</div><div class="txt">Abra la dirección del sistema que le proporcionó la empresa (por ejemplo <code>cotizaciones.tallercreativo.com.mx</code>).</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Escriba su <b>usuario</b>. Es el nombre corto que le asignaron: <code>vendedor</code>, <code>costos</code>, <code>jefe</code> o <code>admin</code>.</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">Escriba su <b>contraseña</b> y toque <b>Ingresar</b>.</div></div>
+    <div class="tip"><b>Importante:</b> el usuario se escribe <b>sin</b> el <code>@tacre.app</code>. Si su cuenta es <code>vendedor@tacre.app</code>, usted escribe solamente <code>vendedor</code>.</div>
+    <div class="tip"><b>No hay que entrar cada vez:</b> el sistema recuerda su sesión. Puede cerrar la app y volver a abrirla sin escribir la contraseña de nuevo. Use el botón <b>← Salir</b> solo si comparte el equipo con alguien más.</div>
+
+    <h2 id="s2"><span class="num">2</span>Instalar la app en cada dispositivo</h2>
+    <p>Aunque funciona en el navegador, conviene <b>instalarla</b> para que quede como una aplicación normal: con su ícono, a pantalla completa y disponible incluso sin internet.</p>
+    <div class="disp">
+      <div class="disp-card">
+        <h4>📱 iPhone y iPad</h4>
+        <div class="paso"><div class="n">1</div><div class="txt">Abra la dirección en <b>Safari</b> (debe ser Safari).</div></div>
+        <div class="paso"><div class="n">2</div><div class="txt">Toque el botón <b>Compartir</b> (cuadro con flecha hacia arriba).</div></div>
+        <div class="paso"><div class="n">3</div><div class="txt">Elija <b>«Añadir a pantalla de inicio»</b> y confirme.</div></div>
+      </div>
+      <div class="disp-card">
+        <h4>🤖 Android</h4>
+        <div class="paso"><div class="n">1</div><div class="txt">Abra la dirección en <b>Chrome</b>.</div></div>
+        <div class="paso"><div class="n">2</div><div class="txt">Toque el menú <b>⋮</b> (arriba a la derecha).</div></div>
+        <div class="paso"><div class="n">3</div><div class="txt">Elija <b>«Instalar aplicación»</b> y confirme.</div></div>
+      </div>
+      <div class="disp-card">
+        <h4>💻 Windows y Mac</h4>
+        <div class="paso"><div class="n">1</div><div class="txt">Abra la dirección en <b>Chrome</b> o <b>Edge</b>.</div></div>
+        <div class="paso"><div class="n">2</div><div class="txt">En la barra de direcciones aparece un ícono de <b>instalar</b> (⊕ o una pantallita).</div></div>
+        <div class="paso"><div class="n">3</div><div class="txt">Haga clic y confirme <b>Instalar</b>.</div></div>
+      </div>
+      <div class="disp-card">
+        <h4>🔄 Actualizaciones</h4>
+        <p style="font-size:.86rem;margin:0">Las mejoras llegan solas. Si le avisaron de una versión nueva y no la ve, <b>cierre y abra la app dos veces</b>. La versión aparece en la pantalla de ingreso.</p>
+      </div>
+    </div>
+    <div class="tip"><b>Cómo distribuirla al equipo:</b> basta con enviarles la dirección por WhatsApp junto con su usuario y contraseña. Cada quien la instala en su teléfono y computadora siguiendo los pasos de arriba. No hay licencias que instalar ni límite de dispositivos.</div>
+    <div class="warn"><b>Sin internet:</b> puede consultar y trabajar con lo que ya tenía cargado. Los cambios se sincronizan solos en cuanto recupere la conexión.</div>
+
+    <h2 id="s3"><span class="num">3</span>Los roles: quién hace qué</h2>
+    <p>Cada persona ve únicamente las pestañas que le corresponden según su rol.</p>
+    <table>
+      <thead><tr><th>Rol</th><th>Qué puede hacer</th></tr></thead>
+      <tbody>
+        <tr><td><b>Vendedor</b></td><td>Crear cotizaciones, cargar materiales e imágenes, enviarlas a revisión, mandarlas al cliente y registrar su respuesta.</td></tr>
+        <tr><td><b>Costos</b></td><td>Revisar la estructura de materiales de cada cotización, corregirla, y aprobarla o rechazarla con un motivo.</td></tr>
+        <tr><td><b>Jefe</b></td><td>Definir mano de obra, costos operativos, flete e instalación; evaluar escenarios de margen; fijar el precio final; ver utilidad y el tablero de indicadores.</td></tr>
+        <tr><td><b>Administrador</b></td><td>Todo lo anterior, más gestión de usuarios, catálogo y respaldos de la base de datos.</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Una persona puede tener varios roles.</b> Por ejemplo, el dueño suele ser Jefe y Administrador a la vez.</div>
+
+    <h2 id="s4"><span class="num">4</span>Crear y enviar una cotización</h2>
+    <p>Este es el recorrido completo que sigue toda cotización dentro del sistema:</p>
+    <div class="flujo">
+      <span class="et">Borrador</span><span class="fl">→</span>
+      <span class="et">Revisión Costos</span><span class="fl">→</span>
+      <span class="et">Aprobación Jefe</span><span class="fl">→</span>
+      <span class="et">Aprobada</span><span class="fl">→</span>
+      <span class="et">Enviada</span><span class="fl">→</span>
+      <span class="et">Aceptada</span>
+    </div>
+    <h3>Paso a paso (rol Vendedor)</h3>
+    <div class="paso"><div class="n">1</div><div class="txt">Entre a <b>📋 Nueva Cotización</b>.</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Llene la <b>Información General</b>: cliente, proyecto, contacto y líder. Solo el cliente es obligatorio.</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">En <b>Ítems</b>, describa el primer producto o servicio, con su unidad y cantidad.</div></div>
+    <div class="paso"><div class="n">4</div><div class="txt">Toque <b>+ Material</b> y escriba el nombre: el sistema busca en el catálogo y trae el costo automáticamente. Repita por cada material.</div></div>
+    <div class="paso"><div class="n">5</div><div class="txt">Marque si el ítem <b>incluye instalación o flete</b>, y suba hasta <b>3 fotos</b> de referencia.</div></div>
+    <div class="paso"><div class="n">6</div><div class="txt">Use <b>+ Agregar Ítem</b> para los demás. Con las flechas <b>▲▼</b> los ordena como quiera que aparezcan en el PDF.</div></div>
+    <div class="paso"><div class="n">7</div><div class="txt">Agregue <b>Parámetros Técnicos</b> (medidas, fechas de montaje) y <b>Condiciones de Oferta</b> (anticipo, vigencia).</div></div>
+    <div class="paso"><div class="n">8</div><div class="txt">Elija <b>moneda</b> e <b>IVA</b> en Ajuste Financiero.</div></div>
+    <div class="paso"><div class="n">9</div><div class="txt">Toque <b>💾 Guardar Borrador</b> las veces que necesite; puede seguir después.</div></div>
+    <div class="paso"><div class="n">10</div><div class="txt">Cuando esté lista: <b>📤 Enviar a Costos</b>. A partir de aquí ya no podrá editarla.</div></div>
+    <div class="tip"><b>Atajo útil:</b> el botón <b>📑 Copiar de existente</b> trae todos los datos de otra cotización para no empezar de cero en trabajos parecidos.</div>
+    <div class="tip"><b>Se guarda solo:</b> mientras trabaja, el sistema guarda automáticamente cada minuto. No pierde nada si se cierra la app.</div>
+
+    <h2 id="s5"><span class="num">5</span>Revisión de costos</h2>
+    <p>El encargado de costos recibe un aviso 🔔 y encuentra la cotización en la pestaña <b>🔍 Revisión de Costos</b>.</p>
+    <div class="paso"><div class="n">1</div><div class="txt">Abra la cotización y revise los <b>materiales de cada ítem</b>: puede corregir cantidades, agregar los que falten o eliminar los que sobren.</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Si está correcta, toque <b>✓ Aprobar Estructura</b>. Pasa al jefe y el vendedor recibe el aviso.</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">Si falta algo, toque <b>✗ Rechazar</b> y <b>escriba el motivo</b>. El vendedor lo recibe, corrige y la reenvía.</div></div>
+    <div class="warn"><b>El motivo del rechazo es obligatorio</b> y le llega tal cual al vendedor. Sea específico: «falta el herraje de fijación en el ítem 2» ayuda mucho más que «revisar».</div>
+
+    <h2 id="s6"><span class="num">6</span>Aprobación del jefe y precio final</h2>
+    <p>El jefe la encuentra en <b>✅ Aprobación Final</b>. La ventana tiene tres pestañas:</p>
+    <table>
+      <thead><tr><th>Pestaña</th><th>Para qué sirve</th></tr></thead>
+      <tbody>
+        <tr><td><b>📋 Propuesta Completa</b></td><td>Ver todo lo que armó el vendedor: cliente, ítems, parámetros y condiciones.</td></tr>
+        <tr><td><b>📦 Materiales</b></td><td>Ajustar materiales si hace falta un último cambio.</td></tr>
+        <tr><td><b>💼 Costos &amp; Precio</b></td><td>Aquí se define el negocio: costos adicionales, márgenes y precio final.</td></tr>
+      </tbody>
+    </table>
+    <h3>Definir el precio</h3>
+    <div class="paso"><div class="n">1</div><div class="txt">En <b>Costos Adicionales</b> agregue mano de obra, costos operativos, flete e instalación. Cada uno puede ser <b>porcentaje</b> (%) sobre los materiales o <b>monto fijo</b> ($).</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Escriba hasta <b>4 márgenes</b> a evaluar (por ejemplo 10, 20, 30 y 40%) y toque <b>🧮 Calcular Escenarios</b>.</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">El sistema muestra el <b>precio resultante de cada escenario</b>. Toque el que convenga y se coloca solo en el precio final.</div></div>
+    <div class="paso"><div class="n">4</div><div class="txt">Puede ajustar el <b>Precio Final</b> a mano y elegir la <b>moneda</b> definitiva.</div></div>
+    <div class="paso"><div class="n">5</div><div class="txt">Defina el <b>🏷️ descuento máximo autorizado</b> que el vendedor podrá ceder en negociación (0 si no autoriza ninguno).</div></div>
+    <div class="paso"><div class="n">6</div><div class="txt">Toque <b>👁️ Ver Preliminar</b> para revisar exactamente lo que verá el cliente. Desde ahí puede descargar el PDF.</div></div>
+    <div class="paso"><div class="n">7</div><div class="txt">Escriba <b>notas para el vendedor</b> si quiere darle instrucciones, y toque <b>Aprobar y Guardar</b>.</div></div>
+    <div class="tip"><b>El cliente nunca ve sus costos.</b> El precio final se reparte proporcionalmente entre los ítems, de modo que las cifras del PDF siempre suman correctamente sin exponer márgenes ni costos internos.</div>
+
+    <h2 id="s7"><span class="num">7</span>Enviar al cliente y cerrar la venta</h2>
+    <p>Ya aprobada, el vendedor la ve en <b>📋 Mis Cotizaciones</b>. Al abrirla con <b>🔍 Ver</b> tiene estos botones:</p>
+    <div class="paso"><div class="n">1</div><div class="txt"><b>📄 PDF</b> — descarga la cotización con la imagen corporativa.</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt"><b>📱 WhatsApp</b> — abre WhatsApp con el mensaje estándar de la empresa y adjunta el PDF (más los documentos que haya marcado).</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt"><b>✉️ Correo</b> — abre su correo con el asunto y el texto ya redactados. El PDF se descarga para que lo adjunte.</div></div>
+    <div class="paso"><div class="n">4</div><div class="txt"><b>📤 Marcar como Enviada</b> — deja registro de que ya salió al cliente y avisa al jefe.</div></div>
+    <div class="paso"><div class="n">5</div><div class="txt">Cuando el cliente responda: <b>📋 Registrar Respuesta Cliente</b> y elija <b>aceptada</b>, <b>rechazada</b> o <b>negociación</b>.</div></div>
+    <div class="tip"><b>El mensaje es siempre el mismo</b> para todo el equipo: incluye folio, proyecto, cliente, resumen de ítems y el total con IVA. Así nadie improvisa y la empresa se presenta igual de bien siempre.</div>
+
+    <h2 id="s8"><span class="num">8</span>Negociación y descuentos autorizados</h2>
+    <p>Si el cliente pide rebaja, se registra la respuesta como <b>negociación</b>. Ahí el vendedor puede actuar dentro de lo que el jefe autorizó.</p>
+    <h3>Aplicar un descuento (Vendedor)</h3>
+    <div class="paso"><div class="n">1</div><div class="txt">Abra la cotización y toque <b>🏷️ Aplicar Descuento y Cerrar</b>.</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Verá el máximo que el jefe autorizó. Escriba el porcentaje y el sistema muestra <b>al instante</b> el precio nuevo y el total con IVA.</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">Elija si <b>el cliente aceptó</b> (cierra la venta) o si va a <b>reenviar la oferta actualizada</b>.</div></div>
+    <div class="warn"><b>No se puede exceder el límite.</b> Si intenta aplicar más del porcentaje autorizado, el sistema lo impide. Para ceder más, el jefe debe autorizarlo desde el botón <b>⚙️ Autorizar descuento</b>.</div>
+    <h3>Modificar la propuesta en negociación</h3>
+    <p>Si el cliente pide cambios de fondo (otro material, distinta condición, agregar una foto), el jefe puede tocar <b>✏️ Autorizar edición</b>. El vendedor verá entonces el botón <b>✏️ Editar Cotización</b> para ajustar la propuesta completa, conservando el precio aprobado y todo el historial.</p>
+
+    <h2 id="s9"><span class="num">9</span>Documentos adjuntos</h2>
+    <p>Cada cotización tiene su propia carpeta de documentos: fichas técnicas, planos, cartas de presentación, imágenes adicionales.</p>
+    <div class="paso"><div class="n">1</div><div class="txt">Abra la cotización con <b>🔍 Ver</b> y baje hasta <b>📎 Documentos de la Proforma</b>.</div></div>
+    <div class="paso"><div class="n">2</div><div class="txt">Toque <b>📎 Adjuntar documento</b> y elija el archivo (hasta <b>25 MB</b> cada uno).</div></div>
+    <div class="paso"><div class="n">3</div><div class="txt">Cada archivo tiene un interruptor: <b>✉️ Se envía</b> / <b>🔇 No se envía</b>. Los marcados viajan junto al PDF cuando comparta por WhatsApp.</div></div>
+    <div class="paso"><div class="n">4</div><div class="txt">Con <b>⬇️</b> lo descarga y con <b>✕</b> lo elimina.</div></div>
+    <div class="tip"><b>Quedan guardados para siempre</b> junto a la cotización y los ve todo el equipo desde cualquier dispositivo. Útiles como referencia para proyectos futuros.</div>
+
+    <h2 id="s10"><span class="num">10</span>Catálogo de materiales</h2>
+    <p>En la pestaña <b>🏷️ Catálogo</b> vive la lista de materiales con sus costos y proveedores, que alimenta todas las cotizaciones.</p>
+    <table>
+      <thead><tr><th>Botón</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><b>📥 Importar Excel</b></td><td>Sube una lista. <b>Actualiza los precios de los que ya existen y agrega los nuevos, sin borrar nada.</b> Puede subir listas parciales.</td></tr>
+        <tr><td><b>📤 Exportar Excel</b></td><td>Descarga todo el catálogo para revisarlo o actualizar precios cómodamente.</td></tr>
+        <tr><td><b>🔗 Homologar duplicados</b></td><td>Detecta materiales repetidos con el mismo nombre y los fusiona en uno solo.</td></tr>
+        <tr><td><b>+ Agregar Material</b></td><td>Alta manual de un material puntual.</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Actualizar precios sin riesgo:</b> exporte el catálogo, corrija los precios en Excel, y vuelva a importarlo. Antes de aplicar, el sistema le muestra cuántos se actualizarán y cuántos son nuevos.</div>
+    <div class="warn"><b>Las cotizaciones ya hechas no cambian.</b> Cada una guarda el costo que tenía el material el día que se cotizó, así los históricos y las utilidades quedan intactos.</div>
+
+    <h2 id="s11"><span class="num">11</span>Tablero de indicadores</h2>
+    <p>La pestaña <b>📈 Dashboard</b> (jefe y administrador) responde de un vistazo cómo va el negocio:</p>
+    <table>
+      <thead><tr><th>Indicador</th><th>Qué le dice</th></tr></thead>
+      <tbody>
+        <tr><td><b>Ganadas y tasa de cierre</b></td><td>Cuántas se cerraron y qué porcentaje de las presentadas se ganó.</td></tr>
+        <tr><td><b>Monto vendido</b></td><td>Total facturable de lo aceptado, separado por moneda.</td></tr>
+        <tr><td><b>Utilidad estimada</b></td><td>Cuánto quedó realmente después de descontar todos los costos.</td></tr>
+        <tr><td><b>En juego</b></td><td>Dinero en cotizaciones enviadas o en negociación: lo que puede entrar.</td></tr>
+        <tr><td><b>Ciclo promedio</b></td><td>Días desde que se crea una cotización hasta que el cliente acepta.</td></tr>
+        <tr><td><b>Ranking de vendedores</b></td><td>Por cotizaciones, ganadas, % de cierre, monto vendido, utilidad y rapidez.</td></tr>
+        <tr><td><b>Top clientes y etapas</b></td><td>Quiénes compran más y dónde se acumula el trabajo.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="s12"><span class="num">12</span>Avisos y mensajería interna</h2>
+    <p>Arriba a la derecha hay dos botones que mantienen al equipo coordinado sin salir del sistema.</p>
+    <h3>🔔 Notificaciones</h3>
+    <p>Avisan automáticamente en cada etapa: cuando llega algo a revisar, cuando costos aprueba o rechaza, cuando el jefe fija el precio, y cuando el cliente responde. <b>Al tocar un aviso se abre directamente esa cotización.</b></p>
+    <h3>💬 Mensajes</h3>
+    <p>Chat interno entre cualquier miembro del equipo, con burbujas como WhatsApp. El canal <b>📢 Difusión — Todos</b> sirve para anuncios generales; solo el jefe y el administrador pueden escribir ahí.</p>
+
+    <h2 id="s13"><span class="num">13</span>Administración de usuarios</h2>
+    <p>En la pestaña <b>👥 Usuarios</b> (solo administrador) se gestiona el equipo: alta, edición de roles y activar o desactivar accesos.</p>
+    <div class="warn"><b>Alta de personal nuevo:</b> crear un usuario aquí define su <b>perfil y permisos</b>. Su <b>acceso</b> (usuario y contraseña) lo genera el proveedor del sistema. Solicítelo y quedará listo el mismo día.</div>
+    <div class="tip"><b>Cuando alguien se va:</b> no borre su usuario, <b>desactívelo</b>. Así conserva el historial de todas sus cotizaciones y deja de tener acceso de inmediato.</div>
+
+    <h2 id="s14"><span class="num">14</span>Respaldos y seguridad</h2>
+    <p>La información se guarda en la nube de Google, sobre una infraestructura replicada y de alta durabilidad. Además, desde <b>💾 Respaldo BD</b> el administrador puede descargar una copia completa de la base de datos cuando quiera.</p>
+    <table>
+      <thead><tr><th>Protección</th><th>Cómo funciona</th></tr></thead>
+      <tbody>
+        <tr><td><b>Acceso</b></td><td>Cada quien entra con su cuenta. Las contraseñas las resguarda Google.</td></tr>
+        <tr><td><b>Permisos</b></td><td>Cada rol ve y hace únicamente lo que le corresponde dentro del sistema.</td></tr>
+        <tr><td><b>Conexión</b></td><td>Siempre cifrada (candado del navegador).</td></tr>
+        <tr><td><b>Respaldos</b></td><td>Infraestructura replicada de Google, con exportación completa disponible en todo momento desde Respaldo BD.</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="s15"><span class="num">15</span>Preguntas frecuentes</h2>
+    <h3>Trabajé sin internet, ¿perdí algo?</h3>
+    <p>No. Todo queda guardado en su dispositivo y se sincroniza automáticamente al recuperar la conexión.</p>
+    <h3>Cambié algo y mi compañero no lo ve</h3>
+    <p>La sincronización es inmediata. Si no aparece, revise la conexión y use el botón <b>🔄 Actualizar</b> de la pestaña.</p>
+    <h3>Olvidé mi contraseña</h3>
+    <p>Solicite el restablecimiento al administrador o al proveedor del sistema. Por seguridad, las contraseñas no se pueden consultar, solo reemplazar.</p>
+    <h3>¿Puedo usarlo en varios dispositivos a la vez?</h3>
+    <p>Sí, sin límite: computadora, tableta y teléfono con la misma cuenta. Todo se mantiene sincronizado.</p>
+    <h3>Me equivoqué en una cotización ya enviada</h3>
+    <p>Las enviadas no se editan para proteger lo que ya vio el cliente. Si hay que cambiarla, regístrela en <b>negociación</b> y solicite al jefe la <b>autorización de edición</b>.</p>
+    <h3>El PDF muestra un total distinto al que esperaba</h3>
+    <p>El PDF siempre refleja el <b>precio final aprobado por el jefe</b>, repartido entre los ítems, más IVA. Los costos internos nunca aparecen.</p>
+    <h3>¿Cómo sé que tengo la última versión?</h3>
+    <p>El número de versión aparece en la pantalla de ingreso. Si le informaron de una actualización y no la ve, cierre y abra la app dos veces.</p>
+  </div>
+  <div class="pie">TACRE — Sistema de Cotizaciones · Manual de Uso v6.1 · Taller Creativo</div>
+</div>
+</body>
+</html>

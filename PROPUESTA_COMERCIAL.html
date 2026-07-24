@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Propuesta Comercial — Sistema TACRE</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--p:#5a2d82;--pd:#3d1d5a;--t:#00a8a8;--td:#007a7a;--pl:#f5f0fc;--tl:#e8f9f9;--n9:#111827;--n7:#374151;--n5:#6b7280;--n3:#d1d5db;--n1:#f8f9fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;color:var(--n9);line-height:1.6;background:#e9ecf3;padding:24px 12px}
+.hoja{max-width:860px;margin:0 auto 24px;background:#fff;box-shadow:0 8px 32px rgba(0,0,0,.12);border-radius:10px;overflow:hidden}
+.hero{background:linear-gradient(135deg,var(--pd),var(--p) 55%,#6f3da6);color:#fff;padding:38px 44px}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:14px}
+.marca img{width:58px;height:58px;background:#fff;border-radius:12px;padding:5px;object-fit:contain}
+.marca .nom{font-size:1.9rem;font-weight:900;letter-spacing:-1px;line-height:1}
+.marca .nom span{color:#5de8e8}
+.marca .sub{font-size:.7rem;opacity:.85;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.meta{text-align:right;font-size:.78rem;opacity:.9}
+.hero h1{font-size:2.1rem;font-weight:900;margin-top:26px;letter-spacing:-.5px;line-height:1.15}
+.hero .para{margin-top:10px;font-size:.95rem;opacity:.92}
+.cuerpo{padding:36px 44px}
+h2{font-size:.72rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--p);display:flex;align-items:center;gap:10px;margin:34px 0 16px}
+h2::before{content:'';width:4px;height:17px;background:linear-gradient(180deg,var(--t),var(--p));border-radius:2px}
+h2::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--pl),transparent)}
+h2:first-child{margin-top:0}
+p{margin-bottom:12px;color:var(--n7)}
+.dolor{background:var(--n1);border-left:4px solid var(--n3);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:14px}
+.dolor b{color:var(--n9)}
+.gana{background:var(--tl);border-left:4px solid var(--t);border-radius:0 8px 8px 0;padding:16px 20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mod{background:var(--pl);border-radius:10px;padding:14px 16px;border:1px solid rgba(90,45,130,.12)}
+.mod h3{font-size:.88rem;font-weight:800;color:var(--p);margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.mod p{font-size:.8rem;margin:0;color:var(--n7);line-height:1.5}
+ul.check{list-style:none}
+ul.check li{padding:6px 0 6px 28px;position:relative;font-size:.88rem;color:var(--n7);border-bottom:1px solid var(--n1)}
+ul.check li:last-child{border-bottom:none}
+ul.check li::before{content:'✓';position:absolute;left:0;top:6px;width:19px;height:19px;background:var(--tl);color:var(--td);border-radius:50%;font-size:.72rem;font-weight:900;display:flex;align-items:center;justify-content:center}
+ul.check li b{color:var(--n9)}
+ul.no li::before{content:'×';background:#fef2f2;color:#dc2626}
+.gar{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gar-item{border:1.5px solid var(--n3);border-radius:10px;padding:14px 16px;background:#fff}
+.gar-item .ico{font-size:1.3rem;margin-bottom:5px}
+.gar-item h3{font-size:.85rem;font-weight:800;color:var(--n9);margin-bottom:4px}
+.gar-item p{font-size:.78rem;margin:0;line-height:1.5}
+.precio-box{background:linear-gradient(135deg,var(--pd),var(--p));color:#fff;border-radius:14px;padding:26px 30px;margin-top:6px}
+.precio-fila{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.18);flex-wrap:wrap;gap:8px}
+.precio-fila:last-of-type{border-bottom:none}
+.precio-fila .lbl{font-size:.9rem;opacity:.92}
+.precio-fila .lbl small{display:block;font-size:.72rem;opacity:.75;font-weight:400}
+.precio-fila .val{font-size:1.5rem;font-weight:900;white-space:nowrap}
+.precio-fila .val small{font-size:.72rem;font-weight:600;opacity:.8}
+.destacado{background:rgba(0,168,168,.22);border:1.5px solid rgba(93,232,232,.5);border-radius:10px;padding:12px 16px;margin-top:14px;font-size:.84rem}
+.destacado b{color:#5de8e8}
+.plan{background:var(--tl);border:1.5px solid rgba(0,168,168,.28);border-radius:12px;padding:20px 22px}
+.plan-hdr{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1.5px dashed rgba(0,168,168,.3)}
+.plan-hdr .n{font-size:1.05rem;font-weight:900;color:var(--td)}
+.plan-hdr .pr{font-size:1.5rem;font-weight:900;color:var(--td)}
+.plan-hdr .pr small{font-size:.75rem;font-weight:600;color:var(--n5)}
+.crono{position:relative;padding-left:26px}
+.crono::before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--t),var(--p))}
+.crono-item{position:relative;padding:0 0 16px 6px}
+.crono-item::before{content:'';position:absolute;left:-24px;top:5px;width:11px;height:11px;border-radius:50%;background:#fff;border:3px solid var(--t)}
+.crono-item .sem{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--t)}
+.crono-item h3{font-size:.9rem;font-weight:800;margin:1px 0 2px}
+.crono-item p{font-size:.8rem;margin:0}
+.cta{background:var(--pl);border-radius:12px;padding:22px 26px;text-align:center;border:1.5px solid rgba(90,45,130,.15);margin-top:8px}
+.cta h3{font-size:1.05rem;font-weight:900;color:var(--p);margin-bottom:6px}
+.cta p{font-size:.85rem;margin-bottom:0}
+.firma{margin-top:30px;padding-top:20px;border-top:2px solid var(--n1);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:.82rem}
+.firma .quien b{display:block;color:var(--p);font-size:.95rem}
+.pie{background:var(--n1);padding:16px 44px;font-size:.72rem;color:var(--n5);text-align:center;border-top:2px solid var(--pl)}
+.nota{font-size:.75rem;color:var(--n5);font-style:italic;margin-top:8px}
+@media(max-width:680px){.grid,.gar{grid-template-columns:1fr}.hero,.cuerpo{padding:26px 22px}.pie{padding:14px 22px}.hero h1{font-size:1.6rem}}
+@media print{
+  body{background:#fff;padding:0}
+  .hoja{box-shadow:none;border-radius:0;max-width:100%;margin:0}
+  h2{break-after:avoid}
+  .mod,.gar-item,.precio-box,.plan,.crono-item,.cta{break-inside:avoid}
+  .no-print{display:none}
+  @page{margin:12mm}
+}
+</style>
+</head>
+<body>
+
+<div class="hoja">
+  <div class="hero">
+    <div class="hero-top">
+      <div class="marca">
+        <img src="icon-192.png" alt="TACRE">
+        <div>
+          <div class="nom">TA<span>CRE</span></div>
+          <div class="sub">Sistema de Cotizaciones</div>
+        </div>
+      </div>
+      <div class="meta">
+        <div><strong>PROPUESTA COMERCIAL</strong></div>
+        <div>Folio: PROP-2026-001</div>
+        <div>Julio 2026</div>
+        <div>Vigencia: 30 días</div>
+      </div>
+    </div>
+    <h1>Un sistema propio para cotizar,<br>aprobar y vender más rápido</h1>
+    <div class="para">Preparado para <strong>Taller Creativo</strong> — Azcapotzalco, CDMX</div>
+  </div>
+
+  <div class="cuerpo">
+
+    <h2>La oportunidad</h2>
+    <div class="dolor">
+      <b>Taller Creativo ya tiene lo más difícil:</b> un equipo que sabe cotizar, criterio comercial y clientes que
+      vuelven. Lo que sigue es darle a ese conocimiento una <b>estructura que lo potencie</b> — que la experiencia
+      del equipo quede capturada en el sistema y no dependa de la memoria o los archivos de cada persona.
+    </div>
+    <div class="gana">
+      <b>Hacia dónde podemos llevarlo:</b> que todo el equipo trabaje sobre la misma información en tiempo real
+      desde cualquier dispositivo; que cada cotización avance por un flujo claro con aprobaciones registradas;
+      que la dirección tenga a la vista utilidad, tiempos de cierre y desempeño; y que la operación crezca
+      sobre una base ordenada, lista para incorporar nuevas áreas cuando el negocio lo pida.
+    </div>
+
+    <h2>Qué es TACRE Cotizaciones</h2>
+    <p>
+      Más que una herramienta para agilizar cotizaciones, <strong>TACRE Cotizaciones</strong> es un
+      <strong>sistema de flujo de trabajo</strong>: acompaña cada cotización de principio a fin —desde que nace
+      como borrador hasta que se convierte en venta— dejando <strong>registro ordenado de cada etapa, decisión
+      y responsable</strong>.
+    </p>
+    <p>
+      Está construido sobre una <strong>arquitectura escalable</strong>, pensada para crecer con la empresa: sobre
+      esta misma base pueden incorporarse progresivamente nuevos módulos —inventario, órdenes de producción,
+      seguimiento de obra, facturación— hasta lograr el <strong>control total de la operación</strong> en un solo lugar.
+    </p>
+    <p>
+      Funciona como <strong>aplicación instalable</strong> en computadoras, iPhone, iPad y Android, con la
+      información sincronizada en la nube de Google y disponible incluso sin conexión.
+    </p>
+
+    <h2>Lo que incluye el producto</h2>
+    <div class="grid">
+      <div class="mod"><h3>📋 Cotizaciones completas</h3><p>Ítems con materiales, cantidades, unidades, fotos de producto, parámetros técnicos y condiciones de oferta. Reordenables a gusto.</p></div>
+      <div class="mod"><h3>🔄 Flujo de aprobación</h3><p>Vendedor → Revisión de costos → Aprobación del jefe → Envío → Cierre. Cada paso queda registrado con fecha y responsable.</p></div>
+      <div class="mod"><h3>👥 Roles y permisos</h3><p>Vendedor, Costos, Jefe y Administrador. Cada quien ve y hace exactamente lo que le corresponde.</p></div>
+      <div class="mod"><h3>💰 Control de utilidad</h3><p>El jefe define mano de obra, costos operativos, flete e instalación, evalúa escenarios de margen y fija el precio final.</p></div>
+      <div class="mod"><h3>🏷️ Catálogo de materiales</h3><p>Importación desde Excel que <strong>actualiza precios sin borrar nada</strong>, exportación, y homologación de productos repetidos.</p></div>
+      <div class="mod"><h3>📄 PDF corporativo</h3><p>Cotización profesional con su logotipo, datos, condiciones y redes sociales. Totales siempre correctos.</p></div>
+      <div class="mod"><h3>📱 Envío al cliente</h3><p>WhatsApp y correo con un mensaje estándar de la empresa, para que todos comuniquen con el mismo nivel.</p></div>
+      <div class="mod"><h3>📎 Documentos adjuntos</h3><p>Fichas técnicas, planos y cartas hasta 25 MB por archivo, guardados con la cotización y enviables al cliente.</p></div>
+      <div class="mod"><h3>📈 Tablero de dirección</h3><p>Ranking de vendedores, tasa de cierre, monto vendido, utilidad estimada, ciclo de venta en días y top de clientes.</p></div>
+      <div class="mod"><h3>🔔 Notificaciones y chat</h3><p>Avisos automáticos en cada etapa del flujo y mensajería interna entre el equipo, con difusión del jefe a todos.</p></div>
+      <div class="mod"><h3>🏷️ Descuentos autorizados</h3><p>El jefe define hasta qué % puede ceder cada vendedor; el sistema impide regalar margen sin permiso.</p></div>
+      <div class="mod"><h3>📊 Auditoría e historial</h3><p>Historial completo de cada cotización: quién hizo qué y cuándo. Consultable en cualquier etapa, incluso años después.</p></div>
+    </div>
+
+    <h2>Y además, en la entrega</h2>
+    <ul class="check">
+      <li><b>Instalación y configuración</b> con los datos reales de la empresa: usuarios, logotipo, colores y condiciones.</li>
+      <li><b>Carga de su catálogo</b> de materiales y proveedores a partir de sus archivos actuales.</li>
+      <li><b>Dirección propia en internet</b> (ejemplo: <em>cotizaciones.tallercreativo.com.mx</em>) con certificado de seguridad, sujeta a acceso al dominio de la empresa.</li>
+      <li><b>Capacitación al equipo</b> en sesiones prácticas, con datos de ejemplo para practicar sin ensuciar la información real.</li>
+      <li><b>Manual de uso</b> ilustrado para consulta permanente y para futuras incorporaciones.</li>
+      <li><b>Acompañamiento cercano</b> durante las primeras semanas de uso real.</li>
+    </ul>
+
+    <h2>Nuestras garantías</h2>
+    <div class="gar">
+      <div class="gar-item"><div class="ico">🛡️</div><h3>90 días de garantía total</h3><p>Cualquier falla o comportamiento incorrecto se corrige sin costo durante los primeros 90 días posteriores a la entrega.</p></div>
+      <div class="gar-item"><div class="ico">🔓</div><h3>Sus datos son suyos</h3><p>Puede exportar toda su información (cotizaciones, catálogo, usuarios) en cualquier momento. Sin secuestro de datos ni permanencia forzada.</p></div>
+      <div class="gar-item"><div class="ico">🔐</div><h3>Seguridad de nivel Google</h3><p>Autenticación gestionada por Google, control de acceso por roles aplicado en el servidor, conexión cifrada y respaldos automáticos diarios sobre la misma infraestructura que respalda a Gmail.</p></div>
+      <div class="gar-item"><div class="ico">⚡</div><h3>Continuidad garantizada</h3><p>Las actualizaciones se prueban antes de publicarse y nunca modifican su información. Si algo falla, se revierte de inmediato.</p></div>
+    </div>
+
+    <h2>Inversión</h2>
+    <div class="precio-box">
+      <div class="precio-fila">
+        <div class="lbl"><strong>Desarrollo de software completo</strong><small>Pago único — sistema a la medida, configurado, capacitado y entregado</small></div>
+        <div class="val">$1,600 <small>USD</small></div>
+      </div>
+      <div class="precio-fila">
+        <div class="lbl"><strong>Servicio mensual</strong><small>Infraestructura, soporte y evolución continua</small></div>
+        <div class="val">$149 <small>USD / mes</small></div>
+      </div>
+      <div class="destacado">
+        💡 <b>Opción anual:</b> $1,490 USD por 12 meses — <b>equivale a 2 meses sin costo</b>.
+      </div>
+    </div>
+    <p class="nota">Forma de pago a convenir. El servicio mensual comienza a partir de la puesta en marcha.</p>
+
+    <h2>Qué incluye el servicio mensual</h2>
+    <div class="plan">
+      <div class="plan-hdr">
+        <div class="n">Plan de Servicio TACRE</div>
+        <div class="pr">$149 <small>USD/mes</small></div>
+      </div>
+      <ul class="check">
+        <li><b>Horas mensuales de ajustes y desarrollo</b> — cambios, nuevos campos, reportes o mejoras que la operación vaya pidiendo.</li>
+        <li><b>Infraestructura completa</b> — servidores, base de datos en la nube y almacenamiento de archivos. Sin costos ocultos.</li>
+        <li><b>Respaldos automáticos diarios</b> de toda la información, con exportación completa y restauración disponibles en todo momento.</li>
+        <li><b>Corrección de fallas sin costo</b>, siempre, no solo durante la garantía.</li>
+        <li><b>Soporte prioritario</b> por WhatsApp y correo, con respuesta el mismo día hábil.</li>
+        <li><b>Actualizaciones y mejoras continuas</b> del sistema, incluidas automáticamente.</li>
+        <li><b>Alta y capacitación de nuevos usuarios</b> cuando el equipo crezca.</li>
+        <li><b>Monitoreo del servicio</b> para detectar y resolver problemas antes de que los noten.</li>
+      </ul>
+    </div>
+
+    <h2>Qué no incluye (para total claridad)</h2>
+    <ul class="check no">
+      <li><b>Módulos nuevos de gran alcance</b> (inventario, facturación electrónica, nómina): se cotizan por separado y con gusto.</li>
+      <li><b>Integraciones con sistemas de terceros</b> (contabilidad, ERP, portales de clientes).</li>
+      <li><b>Rediseño de identidad de marca</b> o producción de contenido comercial.</li>
+      <li><b>Equipos, dispositivos o conexión a internet</b> de la empresa.</li>
+    </ul>
+
+    <h2>Cómo lo ponemos en marcha</h2>
+    <div class="crono">
+      <div class="crono-item"><div class="sem">Paso 1</div><h3>Configuración</h3><p>Alta de los usuarios reales, carga de su catálogo de materiales y aplicación de su identidad visual y condiciones comerciales.</p></div>
+      <div class="crono-item"><div class="sem">Paso 2</div><h3>Capacitación</h3><p>Sesiones prácticas con cada rol. El equipo practica con cotizaciones de ejemplo antes de tocar información real.</p></div>
+      <div class="crono-item"><div class="sem">Paso 3</div><h3>Puesta en marcha</h3><p>Arranque en operación real con acompañamiento cercano para resolver dudas sobre la marcha.</p></div>
+      <div class="crono-item"><div class="sem">Paso 4</div><h3>Ajuste fino y evolución</h3><p>Afinamos detalles según el uso real y comienza el ciclo de mejoras continuas del servicio mensual.</p></div>
+    </div>
+
+    <h2>Por qué conviene</h2>
+    <p>
+      Si el equipo ahorra <strong>horas por semana</strong> en armar cotizaciones, y se evitan
+      <strong>errores de margen</strong> en un proyecto grande, el sistema se paga solo. A eso se suma algo que no
+      se mide en horas: <strong>presentarse ante sus clientes con documentos impecables</strong> y responder con la
+      rapidez que hoy exige el mercado.
+    </p>
+
+    <div class="cta">
+      <h3>¿Comenzamos?</h3>
+      <p>Con la aceptación de esta propuesta iniciamos la configuración de inmediato.<br>
+      Quedo a sus órdenes para resolver cualquier duda o ajustar el alcance.</p>
+    </div>
+
+    <div class="firma">
+      <div class="quien">
+        <b>Stef Calvo</b>
+        Desarrollo de sistemas a la medida<br>
+        stearcesoto@gmail.com
+      </div>
+      <div class="quien" style="text-align:right;">
+        <b>Taller Creativo</b>
+        Calle Libertad 49, Col. del Recreo<br>
+        Azcapotzalco, C.P. 02070, CDMX
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pie">
+    Propuesta válida por 30 días · Precios en dólares estadounidenses (USD) · TACRE — Sistema de Cotizaciones
+  </div>
+</div>
+
+</body>
+</html>
