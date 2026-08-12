@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<title>TACRE v6.2 — Sistema de Cotizaciones</title>
+<title>TACRE v6.3 — Sistema de Cotizaciones</title>
 <!-- MEJ-24 (v5.5): PWA instalable — manifest + iconos + modo standalone iOS/Android -->
 <meta name="theme-color" content="#5a2d82">
 <link rel="manifest" href="manifest.webmanifest">
@@ -254,7 +254,7 @@ button,.btn,.nav-tab,.cur-btn,.jc-toggle,.ja-tab,.margin-item,.img-slot{touch-ac
   <div class="login-card">
     <div class="login-logo"><img id="logo-login" alt="TACRE"></div>
     <div class="login-title">TA<span>CRE</span></div>
-    <div class="login-sub">Sistema de Cotizaciones v6.2</div>
+    <div class="login-sub">Sistema de Cotizaciones v6.3</div>
     <div class="login-form">
       <div class="lgrp"><label>Usuario</label><input type="text" id="l-user" placeholder="Ingresa tu usuario" autocomplete="username"></div>
       <div class="lgrp"><label>Contraseña</label><input type="password" id="l-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -2826,24 +2826,100 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(fi)fi.onchange=function(e){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();r.onload=ev=>{
-      const wb=XLSX.read(ev.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const data=XLSX.utils.sheet_to_json(ws);
-      if(!data.length){toast('El archivo está vacío');return;}
-      STATE._excelData=data.map(row=>({codigo:String(row['Código']||row['codigo']||''),descripcion:String(row['Descripción']||row['descripcion']||''),costoUnitario:parseFloat(row['Costo Unitario']||row['costoUnitario']||0)||0,proveedor:String(row['Proveedor']||row['proveedor']||''),categoria:String(row['Categoría']||row['categoria']||''),stock:parseInt(row['Stock']||0)||0}));
-      const prev=document.getElementById('excel-preview');prev.style.display='block';
-      // MEJ-40: preview con el desglose del merge ANTES de confirmar
-      const plan=_analizarImport();
-      prev.innerHTML=`<div style="background:var(--tl);border-radius:8px;padding:10px;font-size:.82rem;">
-        ✓ ${STATE._excelData.length} filas detectadas<br>
-        🔄 <strong>${plan.actualizar.length}</strong> se actualizarán (precio/proveedor cambió) ·
-        ➕ <strong>${plan.nuevos.length}</strong> nuevos ·
-        ⏸️ <strong>${plan.sinCambio}</strong> sin cambios<br>
-        <span style="color:var(--n5);">El resto del catálogo queda intacto.</span>
-        ${plan.actualizar.length?`<div style="margin-top:6px;font-size:.75rem;color:var(--n7);">Ej.: ${plan.actualizar.slice(0,3).map(a=>sanitize(a.objetivo.descripcion)+' $'+fmtNum(a.objetivo.costoUnitario)+' → $'+fmtNum(a.row.costoUnitario||a.objetivo.costoUnitario)).join(' · ')}</div>`:''}
-      </div>`;
-      document.getElementById('btn-import-confirm').style.display='inline-block';
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+        const lect=_leerExcelInteligente(ws); // MEJ-50: se adapta a las listas reales del cliente
+        if(!lect.filas.length){toast('No se encontraron productos en el archivo');return;}
+        STATE._excelData=lect.filas;
+        const prev=document.getElementById('excel-preview');prev.style.display='block';
+        const plan=_analizarImport();const inf=lect.info;
+        prev.innerHTML=`<div style="background:var(--tl);border-radius:8px;padding:10px;font-size:.82rem;">
+          ✓ <strong>${lect.filas.length}</strong> productos detectados${inf.filaEnc>0?' · encabezados en la fila '+(inf.filaEnc+1):''}<br>
+          <span style="color:var(--n5);font-size:.75rem;">Descripción: <b>${sanitize(inf.colDesc||'—')}</b>${inf.colsPrecio.length?' · Precio: se toma el <b>más alto</b> de <b>'+inf.colsPrecio.map(sanitize).join(' / ')+'</b>':' · <b style="color:#dc2626;">sin columna de precio detectada</b>'}${inf.colCat?' · Categoría: <b>'+sanitize(inf.colCat)+'</b>':''}${inf.colProv?' · Proveedor: <b>'+sanitize(inf.colProv)+'</b>':''}</span><br>
+          🔄 <strong>${plan.actualizar.length}</strong> se actualizarán ·
+          ➕ <strong>${plan.nuevos.length}</strong> nuevos ·
+          ⏸️ <strong>${plan.sinCambio}</strong> sin cambios<br>
+          <span style="color:var(--n5);">El resto del catálogo queda intacto.</span>
+          ${plan.actualizar.length?`<div style="margin-top:6px;font-size:.75rem;color:var(--n7);">Actualiza ej.: ${plan.actualizar.slice(0,3).map(a=>sanitize(a.objetivo.descripcion)+' $'+fmtNum(a.objetivo.costoUnitario)+' → $'+fmtNum(a.row.costoUnitario||a.objetivo.costoUnitario)).join(' · ')}</div>`:''}
+          ${plan.nuevos.length?`<div style="margin-top:4px;font-size:.75rem;color:var(--n7);">Nuevos ej.: ${plan.nuevos.slice(0,3).map(n=>sanitize(n.descripcion)+' $'+fmtNum(n.costoUnitario)).join(' · ')}</div>`:''}
+        </div>`;
+        document.getElementById('btn-import-confirm').style.display='inline-block';
+      }catch(err){console.warn('Import',err);toast('⛔ No se pudo leer el archivo. Verifica que sea un Excel válido.');}
     };r.readAsArrayBuffer(f);
   };
 });
+// ── MEJ-50: LECTOR INTELIGENTE DE LISTAS DE PRECIOS ──
+// Las listas reales del cliente no vienen con el formato ideal: los encabezados pueden
+// estar en la fila 8 (debajo del logo), el "código" puede repetirse (familia de producto),
+// puede haber varias columnas de precio y alguna sin encabezado. Este lector:
+//   1) busca la fila de encabezados por palabras clave,
+//   2) identifica descripción / precios / categoría / proveedor,
+//   3) considera precio también a las columnas numéricas sin encabezado,
+//   4) toma el PRECIO MÁS ALTO de todas las columnas de precio,
+//   5) usa la descripción como identificador (los códigos se generan solos).
+function _leerExcelInteligente(ws){
+  const m=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:''});
+  const txt=v=>String(v==null?'':v).trim();
+  // FIX-51: precio ESTRICTO — la celda entera debe ser un número ($1,234.50 sí;
+  // "1.22 MT X 2.44 MTS" o "5/16 X 1" NO). Antes se extraían dígitos de textos con
+  // medidas y generaba costos absurdos (ej. $5,161,202).
+  const num=v=>{
+    if(typeof v==='number')return isFinite(v)?v:null;
+    const s=txt(v);if(!s)return null;
+    if(!/^\$?\s*-?[\d,]+(\.\d+)?$/.test(s))return null;
+    const n=parseFloat(s.replace(/[$,\s]/g,''));
+    return isFinite(n)?n:null;
+  };
+  const CLAVE=/(codigo|c[oó]digo|producto|descripci[oó]n|material|art[ií]culo|precio|costo)/i;
+  // 1) fila de encabezados
+  let hi=-1;
+  for(let i=0;i<Math.min(m.length,40);i++){
+    const celdas=m[i].map(txt).filter(Boolean);
+    if(celdas.length>=2&&celdas.some(c=>CLAVE.test(c))){hi=i;break;}
+  }
+  if(hi<0)hi=0;
+  const enc=(m[hi]||[]).map(txt);
+  const datos=m.slice(hi+1).filter(r=>r.some(c=>txt(c)!==''));
+  const nCols=Math.max(enc.length,...datos.map(r=>r.length),0);
+  // 2) perfil de cada columna (cuántos textos y cuántos números tiene)
+  const perfil=[];
+  for(let c=0;c<nCols;c++){
+    let nums=0,txts=0,largo=0;
+    datos.forEach(r=>{const v=r[c];const s=txt(v);if(!s)return;if(num(v)!=null)nums++;else{txts++;largo+=s.length;}});
+    perfil.push({c,enc:enc[c]||'',nums,txts,largoProm:txts?largo/txts:0});
+  }
+  const buscarEnc=re=>perfil.find(p=>re.test(p.enc));
+  // 3) descripción: por encabezado, o la columna de texto con contenido más largo
+  let pDesc=buscarEnc(/producto|descripci[oó]n|material|art[ií]culo|nombre/i);
+  if(!pDesc)pDesc=perfil.filter(p=>p.txts>=Math.max(2,datos.length*0.3)).sort((a,b)=>b.largoProm-a.largoProm)[0];
+  // 4) precios: encabezado de precio/costo + columnas mayormente numéricas sin encabezado
+  const esPrecioEnc=p=>/precio|costo|importe|valor|\$/i.test(p.enc);
+  // FIX-51: nunca tomar como precio columnas de texto descriptivo o de conteo
+  const noEsPrecio=p=>/descripci[oó]n|medida|dimensi|observa|nota|comentario|stock|cantidad|existencia|unidad|clave|c[oó]digo/i.test(p.enc);
+  const colsPrecio=perfil.filter(p=>p!==pDesc&&!noEsPrecio(p)&&(esPrecioEnc(p)||(p.nums>=Math.max(2,datos.length*0.3)&&p.nums>p.txts)));
+  // 5) categoría (el "código" repetido suele ser la familia) y proveedor
+  const pCat=buscarEnc(/categor[ií]a|familia|linea|línea|tipo/i)||buscarEnc(/^c[oó]digo$/i);
+  const pProv=buscarEnc(/proveedor|marca|fabricante/i);
+  const filas=[];
+  datos.forEach(r=>{
+    const desc=pDesc?txt(r[pDesc.c]):'';
+    if(!desc||CLAVE.test(desc)&&desc.length<12&&!/\d/.test(desc))return; // saltar repeticiones de encabezado
+    const precios=colsPrecio.map(p=>num(r[p.c])).filter(v=>v!=null&&v>0);
+    if(!desc)return;
+    filas.push({
+      codigo:'', // se genera al importar (MEJ-50: los códigos del archivo no son únicos)
+      descripcion:desc,
+      costoUnitario:precios.length?Math.max(...precios):0, // el MÁS ALTO de las listas
+      proveedor:pProv?txt(r[pProv.c]):'',
+      categoria:pCat?txt(r[pCat.c]):'',
+      stock:0
+    });
+  });
+  return{filas,info:{filaEnc:hi,colDesc:pDesc?(pDesc.enc||('columna '+String.fromCharCode(65+pDesc.c))):'',
+    colsPrecio:colsPrecio.map(p=>p.enc||('columna '+String.fromCharCode(65+p.c))),
+    colCat:pCat?pCat.enc:'',colProv:pProv?pProv.enc:''}};
+}
+
 // MEJ-40: normaliza descripciones para comparar productos "idénticos" (homologación)
 function _normDesc(s){return String(s||'').toUpperCase().replace(/\s+/g,' ').trim();}
 function _nextMatCod(mats){
@@ -2856,9 +2932,23 @@ function _analizarImport(){
   const porCod=new Map(mats.map(m=>[String(m.codigo||'').trim().toUpperCase(),m]));
   const porDesc=new Map(mats.map(m=>[_normDesc(m.descripcion),m]));
   const plan={actualizar:[],nuevos:[],sinCambio:0};
+  // MEJ-50/FIX-51: si el MISMO archivo repite un producto con precios distintos,
+  // se consolida en una sola entrada con el precio MÁS ALTO (criterio del cliente).
+  const consolidado=new Map();
   (STATE._excelData||[]).forEach(row=>{
+    const clave=_normDesc(row.descripcion);if(!clave)return;
+    const prev=consolidado.get(clave);
+    if(!prev)consolidado.set(clave,{...row});
+    else{
+      if((row.costoUnitario||0)>(prev.costoUnitario||0))prev.costoUnitario=row.costoUnitario;
+      if(!prev.proveedor&&row.proveedor)prev.proveedor=row.proveedor;
+      if(!prev.categoria&&row.categoria)prev.categoria=row.categoria;
+    }
+  });
+  [...consolidado.values()].forEach(row=>{
+    const clave=_normDesc(row.descripcion);
     const cod=String(row.codigo||'').trim().toUpperCase();
-    const objetivo=(cod&&porCod.get(cod))||porDesc.get(_normDesc(row.descripcion))||null;
+    const objetivo=(cod&&porCod.get(cod))||porDesc.get(clave)||null;
     if(objetivo){
       const cambia=(row.costoUnitario>0&&row.costoUnitario!==objetivo.costoUnitario)
         ||(row.proveedor&&row.proveedor!==objetivo.proveedor)
@@ -3024,7 +3114,7 @@ function generarPDF(id,returnBlob,precioOv,monedaOv){
     doc.setTextColor(90,45,130);doc.setFont('Helvetica','bold');doc.setFontSize(7.5);
     doc.text('Calle Libertad 49, Col del Recreo, Azcapotzalco. C.P. 02070',pageW/2,fy-13,{align:'center'});
     doc.setFont('Helvetica','normal');doc.setTextColor(150,150,150);doc.setFontSize(7);
-    doc.text('Pag. '+p+' / '+total+' — TACRE v6.2',margin,fy-13);
+    doc.text('Pag. '+p+' / '+total+' — TACRE v6.3',margin,fy-13);
     let ix=(pageW-totalIconsW)/2;
     socialIcons.forEach(ic=>{
       doc.setFillColor(ic.r,ic.g,ic.b);
