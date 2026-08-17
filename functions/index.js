@@ -14,11 +14,18 @@ const {getAuth} = require('firebase-admin/auth');
 
 // Inicializacion diferida: el modulo carga al instante (evita el timeout de analisis
 // del despliegue) y Firebase Admin se prepara recien cuando se ejecuta una funcion.
-function ready() {
-  if (!getApps().length) initializeApp();
+// Se guarda la instancia y se le pasa EXPLICITAMENTE a getFirestore/getAuth: asi no
+// dependemos de que encuentren la "app por defecto" (era la causa del error interno).
+let _app = null;
+function appRef() {
+  if (!_app) {
+    const apps = getApps();
+    _app = apps.length ? apps[0] : initializeApp();
+  }
+  return _app;
 }
-const db = () => { ready(); return getFirestore(); };
-const auth = () => { ready(); return getAuth(); };
+const db = () => getFirestore(appRef());
+const auth = () => getAuth(appRef());
 
 // Verifica que quien llama tenga sesion y este registrado como administrador
 async function exigirAdmin(request) {
