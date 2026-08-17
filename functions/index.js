@@ -3,23 +3,22 @@
 // Alta y gestion de usuarios SIN abrir la consola de Firebase y SIN habilitar el
 // auto-registro: solo quien esta en la coleccion `admins` puede crear cuentas.
 // Se despliegan con:  firebase deploy --only functions
+//
+// FIX-53: firebase-admin v14 usa API modular (getFirestore/getAuth). La forma
+// antigua (admin.firestore(), admin.apps) ya no existe en esta version.
 // ============================================================
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
-const admin = require('firebase-admin');
+const {initializeApp, getApps} = require('firebase-admin/app');
+const {getFirestore} = require('firebase-admin/firestore');
+const {getAuth} = require('firebase-admin/auth');
 
 // Inicializacion diferida: el modulo carga al instante (evita el timeout de analisis
 // del despliegue) y Firebase Admin se prepara recien cuando se ejecuta una funcion.
-let _app;
-function app() {
-  // admin.app() lanza error si aun no hay app inicializada -> se inicializa entonces.
-  // (compatible con firebase-admin v12/v13/v14; `admin.apps` ya no existe en v14)
-  if (!_app) {
-    try { _app = admin.app(); } catch (e) { _app = admin.initializeApp(); }
-  }
-  return _app;
+function ready() {
+  if (!getApps().length) initializeApp();
 }
-const db = () => app().firestore();
-const auth = () => app().auth();
+const db = () => { ready(); return getFirestore(); };
+const auth = () => { ready(); return getAuth(); };
 
 // Verifica que quien llama tenga sesion y este registrado como administrador
 async function exigirAdmin(request) {
