@@ -11,7 +11,11 @@ const admin = require('firebase-admin');
 // del despliegue) y Firebase Admin se prepara recien cuando se ejecuta una funcion.
 let _app;
 function app() {
-  if (!_app) _app = admin.apps.length ? admin.app() : admin.initializeApp();
+  // admin.app() lanza error si aun no hay app inicializada -> se inicializa entonces.
+  // (compatible con firebase-admin v12/v13/v14; `admin.apps` ya no existe en v14)
+  if (!_app) {
+    try { _app = admin.app(); } catch (e) { _app = admin.initializeApp(); }
+  }
   return _app;
 }
 const db = () => app().firestore();
