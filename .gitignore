@@ -20,3 +20,7 @@ src-tauri/target/
 
 # Respaldos comprimidos
 *.zip
+
+functions/node_modules/
+firebase-debug.log
+.firebase/

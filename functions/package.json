@@ -1,0 +1,11 @@
+{
+  "name": "tacre-functions",
+  "description": "Funciones de servidor de TACRE — alta y gestión segura de usuarios",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true
+}
