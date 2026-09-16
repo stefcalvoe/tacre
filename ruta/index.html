@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Recorrido — Tracker GPS v1.0</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#5a2d82;--t:#00a8a8;--bg:#f5f5f7;--tx:#1c1c1e;--mu:#6b6b70;--rd:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--tx);height:100svh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--p);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:15px;font-weight:700;flex:1}
+#gps{font-size:11px;background:rgba(255,255,255,.18);padding:3px 8px;border-radius:20px}
+#map{flex:1;min-height:0;background:#ddd}
+.panel{background:#fff;border-radius:var(--rd) var(--rd) 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.1);padding:12px 12px calc(env(safe-area-inset-bottom) + 12px)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.st{background:var(--bg);border-radius:10px;padding:8px;text-align:center}
+.st b{display:block;font-size:19px;font-weight:700;color:var(--p);line-height:1.2}
+.st span{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:8px}
+button{flex:1;border:0;border-radius:10px;padding:13px;font:600 15px Inter,sans-serif;color:#fff;background:var(--p);cursor:pointer}
+button.t{background:var(--t)}button.g{background:#8a8a90}button:disabled{opacity:.45}
+.mini{padding:9px;font-size:13px}
+#hist{max-height:34svh;overflow:auto;margin-top:10px;display:none}
+.h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;font-size:12px}
+.h small{color:var(--mu);display:block}
+.h button{flex:0 0 auto;padding:6px 9px;font-size:12px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:9px 14px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.25s}
+#toast.show{opacity:1}
+@media (hover:none),(pointer:coarse){input,select{font-size:16px}}
+</style>
+</head>
+<body>
+<header><h1>Mi Recorrido</h1><span id="gps">GPS: —</span></header>
+<div id="map"></div>
+<div class="panel">
+  <div class="stats">
+    <div class="st"><b id="sDist">0.00</b><span>km</span></div>
+    <div class="st"><b id="sTime">00:00:00</b><span>tiempo</span></div>
+    <div class="st"><b id="sAvg">0.0</b><span>prom km/h</span></div>
+    <div class="st"><b id="sCur">0.0</b><span>actual km/h</span></div>
+    <div class="st"><b id="sMax">0.0</b><span>máx km/h</span></div>
+    <div class="st"><b id="sEle">0</b><span>desnivel m</span></div>
+  </div>
+  <div class="row">
+    <button id="bMain">▶ Inicio</button>
+    <button id="bPause" class="t" disabled>⏸ Pausa</button>
+    <button id="bStop" class="g" disabled>■ Fin</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="g mini" id="bHist">Historial</button>
+    <button class="g mini" id="bGpx" disabled>Exportar GPX</button>
+    <button class="g mini" id="bShare" disabled>Compartir</button>
+  </div>
+  <div id="hist"></div>
+</div>
+<div id="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const KEY='ruta_recorridos', VER='1.0';
+const $=id=>document.getElementById(id);
+let map,line,dot,watchId=null,estado='idle',pts=[],t0=0,acum=0,tPausa=0,maxV=0,subida=0,bajada=0,timer=null,ultima=null;
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function sanitize(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function hms(ms){const s=Math.floor(ms/1000);return [s/3600,s%3600/60,s%60].map(n=>String(Math.floor(n)).padStart(2,'0')).join(':')}
+
+// Haversine en metros
+function dist(a,b){
+  const R=6371000,r=Math.PI/180;
+  const dLa=(b.lat-a.lat)*r,dLo=(b.lon-a.lon)*r;
+  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([19.4326,-99.1332],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+  line=L.polyline([],{color:'#5a2d82',weight:5,opacity:.85}).addTo(map);
+  dot=L.circleMarker([19.4326,-99.1332],{radius:7,color:'#fff',weight:2,fillColor:'#00a8a8',fillOpacity:1}).addTo(map);
+}
+
+function distTotal(){let d=0;for(let i=1;i<pts.length;i++){if(pts[i].seg===pts[i-1].seg)d+=dist(pts[i-1],pts[i])}return d}
+function tiempo(){return estado==='run'?acum+(Date.now()-t0):acum}
+
+function pinta(){
+  const d=distTotal(),ms=tiempo(),h=ms/3600000;
+  $('sDist').textContent=(d/1000).toFixed(2);
+  $('sTime').textContent=hms(ms);
+  $('sAvg').textContent=h>0?((d/1000)/h).toFixed(1):'0.0';
+  $('sMax').textContent=(maxV*3.6).toFixed(1);
+  $('sEle').textContent=Math.round(subida);
+}
+
+// dibuja un tramo por segmento (las pausas no se unen con una recta)
+function repinta(){
+  const segs=[];pts.forEach(p=>{const s=segs[segs.length-1];
+    if(s&&s.seg===p.seg)s.ll.push([p.lat,p.lon]);else segs.push({seg:p.seg,ll:[[p.lat,p.lon]]})});
+  line.setLatLngs(segs.map(s=>s.ll));
+}
+
+function onPos(p){
+  const c=p.coords;
+  $('gps').textContent='GPS: ±'+Math.round(c.accuracy)+' m';
+  const ll=[c.latitude,c.longitude];
+  dot.setLatLng(ll);
+  if(pts.length===0)map.setView(ll,16); else map.panTo(ll,{animate:true});
+  if(estado!=='run')return;
+  if(c.accuracy>50)return;                       // descarta lecturas malas
+  const pt={lat:c.latitude,lon:c.longitude,alt:c.altitude,t:p.timestamp,seg:tPausa};
+  if(ultima){
+    const d=dist(ultima,pt),dt=(pt.t-ultima.t)/1000;
+    if(d<2)return;                               // ruido parado
+    if(dt>0){const v=d/dt; if(v>60)return; if(v>maxV)maxV=v; $('sCur').textContent=(v*3.6).toFixed(1)}
+    if(ultima.alt!=null&&pt.alt!=null){const dh=pt.alt-ultima.alt; if(dh>0.5)subida+=dh; else if(dh<-0.5)bajada-=dh}
+  }
+  pts.push(pt);ultima=pt;
+  repinta();
+  pinta();
+}
+function onErr(e){$('gps').textContent='GPS: error';toast('Sin GPS: '+sanitize(e.message))}
+
+function arranca(){
+  if(!navigator.geolocation)return toast('Este navegador no tiene GPS');
+  if(watchId===null)watchId=navigator.geolocation.watchPosition(onPos,onErr,{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+}
+
+function inicio(){
+  pts=[];maxV=0;subida=0;bajada=0;acum=0;tPausa=0;ultima=null;line.setLatLngs([]);
+  t0=Date.now();estado='run';arranca();
+  timer=setInterval(pinta,1000);
+  $('bMain').textContent='▶ En curso';$('bMain').disabled=true;
+  $('bPause').disabled=false;$('bStop').disabled=false;
+  toast('Recorrido iniciado');
+}
+function pausa(){
+  if(estado==='run'){acum+=Date.now()-t0;estado='pause';tPausa++;ultima=null;$('bPause').textContent='▶ Seguir';toast('En pausa')}
+  else{t0=Date.now();estado='run';$('bPause').textContent='⏸ Pausa';toast('Reanudado')}
+  pinta();
+}
+function fin(){
+  if(estado==='run')acum+=Date.now()-t0;
+  estado='idle';clearInterval(timer);
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  $('bMain').textContent='▶ Inicio';$('bMain').disabled=false;
+  $('bPause').disabled=true;$('bPause').textContent='⏸ Pausa';$('bStop').disabled=true;
+  if(pts.length<2){toast('Sin puntos suficientes');return}
+  guarda();
+  $('bGpx').disabled=false;$('bShare').disabled=false;
+  toast('Recorrido guardado');
+}
+
+function resumen(){
+  const d=distTotal(),ms=acum,h=ms/3600000;
+  return{id:Date.now(),ver:VER,fecha:new Date().toISOString(),distancia:d,duracion:ms,
+    promedio:h>0?(d/1000)/h:0,maxima:maxV*3.6,subida:Math.round(subida),bajada:Math.round(bajada),pts};
+}
+function lee(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}}
+function guarda(){const a=lee();a.unshift(resumen());try{localStorage.setItem(KEY,JSON.stringify(a.slice(0,50)))}catch(e){toast('Memoria llena')}}
+
+function historial(){
+  const h=$('hist');
+  if(h.style.display==='block'){h.style.display='none';return}
+  const a=lee();
+  h.innerHTML=a.length?a.map(r=>`<div class="h"><div><b>${(r.distancia/1000).toFixed(2)} km</b> · ${hms(r.duracion)} · ${r.promedio.toFixed(1)} km/h
+    <small>${sanitize(new Date(r.fecha).toLocaleString('es-MX'))}</small></div>
+    <button class="g" data-ver="${r.id}">Ver</button><button class="g" data-del="${r.id}">✕</button></div>`).join('')
+    :'<div class="h">Aún no hay recorridos guardados.</div>';
+  h.style.display='block';
+}
+$('hist').addEventListener('click',e=>{
+  const v=e.target.dataset.ver,d=e.target.dataset.del;
+  if(v){const r=lee().find(x=>String(x.id)===v);if(!r)return;
+    pts=r.pts;acum=r.duracion;maxV=r.maxima/3.6;subida=r.subida;estado='idle';
+    repinta();map.fitBounds(line.getBounds(),{padding:[30,30]});
+    pinta();$('bGpx').disabled=false;$('bShare').disabled=false;$('hist').style.display='none'}
+  if(d){localStorage.setItem(KEY,JSON.stringify(lee().filter(x=>String(x.id)!==d)));$('hist').style.display='none';historial()}
+});
+
+function gpx(){
+  if(pts.length<2)return toast('Nada que exportar');
+  const body=pts.map(p=>`<trkpt lat="${p.lat}" lon="${p.lon}">${p.alt!=null?`<ele>${p.alt.toFixed(1)}</ele>`:''}<time>${new Date(p.t).toISOString()}</time></trkpt>`).join('');
+  const x=`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Mi Recorrido v${VER}" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Recorrido ${new Date().toLocaleString('es-MX')}</name><trkseg>${body}</trkseg></trk></gpx>`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));
+  a.download='recorrido-'+Date.now()+'.gpx';a.click();URL.revokeObjectURL(a.href);toast('GPX descargado');
+}
+function comparte(){
+  const d=distTotal()/1000,h=acum/3600000;
+  const txt=`Recorrido: ${d.toFixed(2)} km en ${hms(acum)} · promedio ${(h>0?d/h:0).toFixed(1)} km/h · máx ${(maxV*3.6).toFixed(1)} km/h`;
+  if(navigator.share)navigator.share({title:'Mi recorrido',text:txt}).catch(()=>{});
+  else if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast('Copiado'));
+  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copiado')}
+}
+
+$('bMain').onclick=inicio;$('bPause').onclick=pausa;$('bStop').onclick=fin;
+$('bHist').onclick=historial;$('bGpx').onclick=gpx;$('bShare').onclick=comparte;
+window.addEventListener('beforeunload',e=>{if(estado!=='idle'){e.preventDefault();e.returnValue=''}});
+initMap();arranca();
+</script>
+</body>
+</html>
